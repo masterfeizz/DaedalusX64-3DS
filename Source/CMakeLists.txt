@@ -329,7 +329,7 @@ if (CTR_RELEASE)
 	target_include_directories(daedalus PRIVATE
 		${PROJECT_SOURCE_DIR}
 		${PROJECT_SOURCE_DIR}/SysCTR/Include
-		${PROJECT_SOURCE_DIR}/Config/Dev
+		${PROJECT_SOURCE_DIR}/Config/Release
 	)
 
 	target_link_libraries(daedalus
@@ -346,7 +346,7 @@ if (CTR_RELEASE)
 	target_include_directories(${PROJECT_NAME}.elf PRIVATE
 		${PROJECT_SOURCE_DIR}
 		${PROJECT_SOURCE_DIR}/SysCTR/Include
-		${PROJECT_SOURCE_DIR}/Config/Dev
+		${PROJECT_SOURCE_DIR}/Config/Release
 	)
 
 	target_link_libraries(${PROJECT_NAME}.elf
