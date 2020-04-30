@@ -23,7 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <cstdio>
 
-#include "SysCTR/Utility/MemoryCTR.h"
 #include "Config/ConfigOptions.h"
 #include "Core/CPU.h"
 #include "Core/R4300.h"
@@ -36,6 +35,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "DynaRec/Trace.h"
 #include "OSHLE/ultra_R4300.h"
 
+#ifdef DAEDALUS_CTR
+#include "SysCTR/Utility/MemoryCTR.h"
+#endif
 
 using namespace AssemblyUtils;
 
@@ -74,10 +76,6 @@ void	CCodeGeneratorARM::Finalise( ExceptionHandlerFn p_exception_handler_fn, con
 	}
 
 	InsertLiteralPool();
-
-	#ifdef DAEDALUS_CTR
-	_InvalidateAndFlushCaches();
-	#endif
 
 	SetAssemblyBuffer( NULL );
 	mpPrimary = NULL;

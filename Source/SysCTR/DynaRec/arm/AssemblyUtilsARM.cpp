@@ -41,10 +41,6 @@ bool	PatchJumpLong( CJumpLocation jump, CCodeLabel target )
 	p_jump_addr[1] = (p_jump_addr[1] & ~0xFF) | ((address >> 8) & 0xFF);
 	p_jump_addr[2] = (p_jump_addr[2] & ~0xFF) | ((address >> 16) & 0xFF);
 	p_jump_addr[3] = (p_jump_addr[3] & ~0xFF) | ((address >> 24) & 0xFF);
-
-	#ifdef DAEDALUS_CTR
-	_InvalidateAndFlushCaches();
-	#endif
 	
 	// All jumps are 32 bit offsets, and so always succeed.
 	return true;
@@ -55,7 +51,13 @@ bool	PatchJumpLong( CJumpLocation jump, CCodeLabel target )
 //*****************************************************************************
 bool	PatchJumpLongAndFlush( CJumpLocation jump, CCodeLabel target )
 {
-	return PatchJumpLong( jump, target );
+	PatchJumpLong( jump, target );
+	
+	#ifdef DAEDALUS_CTR
+	_InvalidateAndFlushCaches();
+	#endif
+
+	return true;
 }
 
 }

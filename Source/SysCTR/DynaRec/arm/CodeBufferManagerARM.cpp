@@ -80,12 +80,13 @@ CCodeBufferManager *	CCodeBufferManager::Create()
 bool	CCodeBufferManagerARM::Initialise()
 {
 	// mpSecondBuffer is currently unused
+
+	#ifdef DAEDALUS_CTR
 	mpBuffer = (u8*)memalign(4096, CODE_BUFFER_SIZE);
 
 	if (mpBuffer == NULL)
 		return false;
 
-	#ifdef DAEDALUS_CTR
 	_SetMemoryPermission((unsigned int*)mpBuffer, CODE_BUFFER_SIZE, 7);
 	#endif
 
@@ -152,8 +153,14 @@ u32 CCodeBufferManagerARM::FinaliseCurrentBlock()
 
 	mBufferPtr += main_block_size;
 
+	#if 0 //Second buffer is currently unused
 	mSecondBufferPtr += mSecondaryBuffer.GetSize();
 	mSecondBufferPtr = ((mSecondBufferPtr - 1) & 0xfffffff0) + 0x10; // align to 16-byte boundary
+	#endif
 
+	#ifdef DAEDALUS_CTR
+	_InvalidateAndFlushCaches();
+	#endif
+	
 	return main_block_size;
 }
