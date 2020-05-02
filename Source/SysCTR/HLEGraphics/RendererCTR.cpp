@@ -453,19 +453,19 @@ void RendererCTR::RenderUsingRenderSettings( const CBlendStates * states, Daedal
 		// If no texture was specified, or if we couldn't load it, clear it out
 		if( !installed_texture ) glDisable(GL_TEXTURE_2D);
 
+		if( (gRDPOtherMode.text_filt != G_TF_POINT) || (gGlobalPreferences.ForceLinearFilter) )
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		}
+		else
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+		}
+
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, mTexWrap[texture_idx].u);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, mTexWrap[texture_idx].v);
-
-		glColorPointer(4, GL_FLOAT, 0, gColorBuffer);
-
-		for (uint32_t i = 0; i < num_vertices; i++)
-		{
-			gColorBuffer[0] = p_vertices[i].Colour.GetRf();
-			gColorBuffer[1] = p_vertices[i].Colour.GetGf();
-			gColorBuffer[2] = p_vertices[i].Colour.GetBf();
-			gColorBuffer[3] = p_vertices[i].Colour.GetAf();
-			gColorBuffer += 4;
-		}
 
 		DrawPrimitives(p_vertices, num_vertices, triangle_mode, installed_texture);
 
