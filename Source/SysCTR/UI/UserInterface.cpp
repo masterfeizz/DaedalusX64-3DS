@@ -8,7 +8,11 @@
 #include "UserInterface.h"
 
 static stbtt_bakedchar charData[96];
+
 static GLuint fontTex;
+
+static uint32_t _keysDown = 0;
+static uint32_t _keysHeld = 0;
 
 static uint32_t GetStringWidth(const char* text)
 {
@@ -87,6 +91,9 @@ void UI::RestoreRenderState()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+
+	_keysDown = hidKeysHeld() ^ _keysHeld;
+	_keysHeld = hidKeysHeld();
 }
 
 void UI::ClearSecondScreen(unsigned screen)
@@ -136,7 +143,7 @@ bool UI::DrawButton(float x, float y, float width, float height, const char *tex
 
 	hidTouchRead(&touch);
 
-	if(hidKeysDown() & KEY_TOUCH)
+	if(_keysDown & KEY_TOUCH)
 	{
 		if(touch.px > x && touch.px < (x + width) && touch.py > y && touch.py < (y + height))
 			return true;
