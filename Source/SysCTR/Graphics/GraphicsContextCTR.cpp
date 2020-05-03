@@ -106,6 +106,10 @@ IGraphicsContext::~IGraphicsContext()
 bool IGraphicsContext::Initialise()
 {
 	mInitialised = true;
+
+	pglSelectScreen(GFX_TOP, GFX_LEFT);
+	ClearAllSurfaces();
+
 	return true;
 }
 
@@ -153,22 +157,21 @@ void IGraphicsContext::BeginFrame()
 	gVertexBuffer = gVertexBufferPtr;
 	gColorBuffer = gColorBufferPtr;
 	gTexCoordBuffer = gTexCoordBufferPtr;
-
-	ClearToBlack();
 }
 
 void IGraphicsContext::EndFrame()
 {
+	glFinish();
 	HandleEndOfFrame();
 }
 
 void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 {
 	pglSwapBuffers();
-
 	UI::DrawInGameMenu();
-
 	gfxSwapBuffersGpu();
+
+	ClearToBlack();
 }
 
 void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)
