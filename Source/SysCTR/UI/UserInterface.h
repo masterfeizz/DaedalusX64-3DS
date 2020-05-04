@@ -9,4 +9,5 @@ namespace UI
 
 	void DrawText(float x, float y, const char *text);
 	bool DrawButton(float x, float y, float width, float height, const char *text);
+	bool DrawToggle(float x, float y, float width, float height, const char *text, bool isToggled);
 }

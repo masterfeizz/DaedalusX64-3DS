@@ -38,7 +38,8 @@
 
 static aptHookCookie _hookCookie;
 
-bool isN3DS;
+bool isN3DS = false;
+bool shouldQuit = false;
 
 EAudioPluginMode enable_audio = APM_ENABLED_SYNC;
 
@@ -63,7 +64,7 @@ static void _AptEventHook(APT_HookType type, void* param)
 {
 	switch (type)
 	{
-		case APTHOOK_ONEXIT: CPU_Halt("Exiting"); break;
+		case APTHOOK_ONEXIT: CPU_Halt("Exiting"); shouldQuit = true; break;
 		default: break;
 	}
 }
@@ -104,14 +105,18 @@ int main(int argc, char* argv[])
 
 	Initialize();
 	
-	std::string rom = UI::DrawRomSelector();
+	while(shouldQuit == false)
+	{
+		std::string rom = UI::DrawRomSelector();
+		sprintf(fullpath, "%s%s", DAEDALUS_CTR_PATH("Roms/"), rom.c_str());
 
-	sprintf(fullpath, "%s%s", DAEDALUS_CTR_PATH("Roms/"), rom.c_str());
-
-	System_Open(fullpath);
-	CPU_Run();
-	System_Close();
+		System_Open(fullpath);
+		CPU_Run();
+		System_Close();
+	}
+	
 	System_Finalize();
+	pglExit();
 
 	return 0;
 }

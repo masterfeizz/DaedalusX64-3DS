@@ -30,9 +30,10 @@
 #include "Utility/ROMFile.h"
 #include "Utility/Timer.h"
 
-
 extern float gCurrentFramerate;
+extern EFrameskipValue gFrameskipValue;
 
+static uint64_t timer;
 static uint8_t currentPage = 0;
 
 static void ExecSaveState(int slot)
@@ -64,7 +65,6 @@ static void DrawSaveStatePage()
 		if(UI::DrawButton(10, 22 + (54 * i), 300, 44, buttonString))
 		{
 			ExecSaveState(i);
-			currentPage = 0;
 		}
 	}
 
@@ -85,7 +85,6 @@ static void DrawLoadStatePage()
 		if(UI::DrawButton(10, 22 + (54 * i), 300, 44, buttonString))
 		{
 			LoadSaveState(i);
-			currentPage = 0;
 		}
 	}
 
@@ -93,18 +92,76 @@ static void DrawLoadStatePage()
 		currentPage = 0;
 }
 
+static void DrawConfirmPage()
+{
+	UI::DrawHeader("Close ROM: Are you sure?");
+
+	if(UI::DrawToggle(10,  22, 300, 99, "YES", false))
+	{
+		currentPage = 0;
+		 CPU_Halt("Exiting");
+	}
+
+	if(UI::DrawButton(10, 131, 300, 99, "NO"))
+	{
+		currentPage = 0;
+	}
+	
+}
+
+static void DrawOptionsPage()
+{
+	static uint32_t frameskip = 0;
+
+	char frameskipString[30];
+
+	sprintf(frameskipString, "Frameskip: %s", Preferences_GetFrameskipDescription( (EFrameskipValue)frameskip ));
+
+	UI::DrawHeader("Options");
+
+	if(UI::DrawToggle(10,  22, 300, 62, "Toggle Audio", gAudioPluginEnabled == APM_ENABLED_SYNC))
+	{
+		gAudioPluginEnabled = (gAudioPluginEnabled == APM_ENABLED_SYNC ? APM_DISABLED : APM_ENABLED_SYNC);
+		gSpeedSyncEnabled   = (gAudioPluginEnabled == APM_ENABLED_SYNC ? false : true);
+	}
+
+	if(UI::DrawButton(10,  94, 300, 62, frameskipString))
+	{
+		if(++frameskip > 6)
+			frameskip = 0;
+
+		gFrameskipValue = (EFrameskipValue)frameskip;
+	}
+
+	if(UI::DrawButton(10, 166, 300, 62, "Back"))
+	{
+		currentPage = 0;
+	}
+	
+}
+
 static void DrawMainPage()
 {
-	touchPosition touch;
 	char titleString[20];
 
 	sprintf(titleString, "FPS: %.2f", gCurrentFramerate);
 	UI::DrawHeader(titleString);
 
-	glDisable(GL_TEXTURE_2D);
+	if((osGetTime() - timer) > 5000)
+	{
+		if(keysHeld() & KEY_TOUCH)
+		{
+			timer = osGetTime();
+		}
+		return;
+	}
 
-	if(UI::DrawButton(10,  22, 300, 99, "Save State")) currentPage = 1;
-	if(UI::DrawButton(10, 131, 300, 99, "Load State")) currentPage = 2;
+	if(UI::DrawButton(10,  22, 300, 62, "Save State")) currentPage = 1;
+	if(UI::DrawButton(10,  94, 300, 62, "Load State")) currentPage = 2;
+	if(UI::DrawButton(10,  166, 145, 62, "Close ROM")) currentPage = 3;
+	if(UI::DrawButton(165, 166, 145, 62, "Options"))   currentPage = 4;
+
+	timer = osGetTime();
 }
 
 void UI::DrawInGameMenu()
@@ -117,6 +174,8 @@ void UI::DrawInGameMenu()
 		case 0: DrawMainPage(); break;
 		case 1: DrawSaveStatePage(); break;
 		case 2: DrawLoadStatePage(); break;
+		case 3: DrawConfirmPage(); break;
+		case 4: DrawOptionsPage(); break;
 	}
 
 	pglSwapBuffers();

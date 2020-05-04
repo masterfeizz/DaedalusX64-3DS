@@ -109,7 +109,7 @@ void UI::DrawHeader(const char *title)
 	glDisable(GL_TEXTURE_2D);
 
 	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(0.3f, 0.6f, 0.4f);
+		glColor3f(0.1f, 0.6f, 0.5f);
 		glVertex2f(0, 0);
 		glVertex2f(320, 0);
 		glVertex2f(0, 12);
@@ -127,7 +127,43 @@ bool UI::DrawButton(float x, float y, float width, float height, const char *tex
 	glDisable(GL_TEXTURE_2D);
 
 	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(0.3f, 0.6f, 0.4f);
+		glColor3f(0.15f, 0.5f, 0.75f);
+		glVertex2f(x, y);
+		glVertex2f(x+width, y);
+		glVertex2f(x, y+height);
+		glVertex2f(x+width, y+height);
+	glEnd();
+
+	glColor3f(0.9f, 0.9f, 0.9f);
+
+	float tY = y + (height/2) + 6;
+	float tX = x + (width/2) - (GetStringWidth(text) / 2);
+
+	UI::DrawText(tX, tY, text);
+
+	hidTouchRead(&touch);
+
+	if(_keysDown & KEY_TOUCH)
+	{
+		if(touch.px > x && touch.px < (x + width) && touch.py > y && touch.py < (y + height))
+			return true;
+	}
+
+	return false;
+}
+
+bool UI::DrawToggle(float x, float y, float width, float height, const char *text, bool isToggled)
+{
+	touchPosition touch;
+
+	glDisable(GL_TEXTURE_2D);
+
+	if(isToggled)
+		glColor3f(0.1f, 0.6f, 0.5f);
+	else
+		glColor3f(0.75f, 0.2f, 0.15f);
+
+	glBegin(GL_TRIANGLE_STRIP);
 		glVertex2f(x, y);
 		glVertex2f(x+width, y);
 		glVertex2f(x, y+height);
