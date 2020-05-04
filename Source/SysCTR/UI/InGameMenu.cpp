@@ -160,8 +160,6 @@ static void DrawMainPage()
 	if(UI::DrawButton(10,  94, 300, 62, "Load State")) currentPage = 2;
 	if(UI::DrawButton(10,  166, 145, 62, "Close ROM")) currentPage = 3;
 	if(UI::DrawButton(165, 166, 145, 62, "Options"))   currentPage = 4;
-
-	timer = osGetTime();
 }
 
 void UI::DrawInGameMenu()
