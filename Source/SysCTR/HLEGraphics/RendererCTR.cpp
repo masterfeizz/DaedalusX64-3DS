@@ -816,6 +816,11 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 								f32 u0, f32 v0, f32 u1, f32 v1,
 								const CNativeTexture * texture)
 {
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf((float*)mScreenToDevice.mRaw);
+	
+	texture->InstallTexture();
+	
 	glEnable(GL_BLEND);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -828,23 +833,21 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 	float sx1 = N64ToScreenX(x1);
 	float sy1 = N64ToScreenY(y1);
 
-	const f32 depth = 0.0f;
-
 	glDisableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	gVertexBuffer[0] = sx0;
 	gVertexBuffer[1] = sy0;
-	gVertexBuffer[2] = depth;
+	gVertexBuffer[2] = 0.0f;
 	gVertexBuffer[3] = sx1;
 	gVertexBuffer[4] = sy0;
-	gVertexBuffer[5] = depth;
+	gVertexBuffer[5] = 0.0f;
 	gVertexBuffer[6] = sx0;
 	gVertexBuffer[7] = sy1;
-	gVertexBuffer[8] = depth;
+	gVertexBuffer[8] = 0.0f;
 	gVertexBuffer[9] = sx1;
 	gVertexBuffer[10] = sy1;
-	gVertexBuffer[11] = depth;
+	gVertexBuffer[11] = 0.0f;
 	gTexCoordBuffer[0] = u0;
 	gTexCoordBuffer[1] = v0;
 	gTexCoordBuffer[2] = u1;
@@ -900,7 +903,7 @@ void RendererCTR::Draw2DTextureR(f32 x0, f32 y0, f32 x1, f32 y1,
 	glTexCoordPointer(2, GL_FLOAT, 0, gTexCoordBuffer);
 	gVertexBuffer += 12;
 	gTexCoordBuffer += 8;
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 bool CreateRenderer()
