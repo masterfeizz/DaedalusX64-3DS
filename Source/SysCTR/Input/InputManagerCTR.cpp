@@ -102,6 +102,8 @@ void IInputManager::GetState( OSContPad pPad[4] )
 
 	if (hidKeysHeld() & KEY_A)		pPad[0].button |= A_BUTTON;
 	if (hidKeysHeld() & KEY_B)		pPad[0].button |= B_BUTTON;
+
+	if (hidKeysHeld() & KEY_X)		pPad[0].button |= Z_TRIG;
 	if (hidKeysHeld() & KEY_ZR)		pPad[0].button |= Z_TRIG;
 	if (hidKeysHeld() & KEY_ZL)		pPad[0].button |= Z_TRIG;
 
