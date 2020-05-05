@@ -286,7 +286,6 @@ RendererCTR::SBlendStateEntry RendererCTR::LookupBlendState( u64 mux, bool two_c
 
 void RendererCTR::DrawPrimitives(DaedalusVtx * p_vertices, u32 num_vertices, u32 triangle_mode, bool has_texture)
 {
-	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
@@ -738,8 +737,9 @@ void RendererCTR::TexRectFlip(u32 tile_idx, const v2 & xy0, const v2 & xy1, TexC
 	ConvertN64ToScreen( xy1, screen1 );
 
 	CNativeTexture *texture = mBoundTexture[0];
-	float scale_x {texture->GetScaleX()};
-	float scale_y {texture->GetScaleY()};
+
+	float scale_x = texture->GetScaleX();
+	float scale_y = texture->GetScaleY();
 
 	DaedalusVtx * p_vertices = static_cast<DaedalusVtx *>(malloc(4 * sizeof(DaedalusVtx)));
 
@@ -822,10 +822,14 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 	texture->InstallTexture();
 	
 	glEnable(GL_BLEND);
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	float scale_x = texture->GetScaleX();
+	float scale_y = texture->GetScaleY();
 	
 	float sx0 = N64ToScreenX(x0);
 	float sy0 = N64ToScreenY(y0);
@@ -848,14 +852,14 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 	gVertexBuffer[9] = sx1;
 	gVertexBuffer[10] = sy1;
 	gVertexBuffer[11] = 0.0f;
-	gTexCoordBuffer[0] = u0;
-	gTexCoordBuffer[1] = v0;
-	gTexCoordBuffer[2] = u1;
-	gTexCoordBuffer[3] = v0;
-	gTexCoordBuffer[4] = u0;
-	gTexCoordBuffer[5] = v1;
-	gTexCoordBuffer[6] = u1;
-	gTexCoordBuffer[7] = v1;
+	gTexCoordBuffer[0] = u0 * scale_x;
+	gTexCoordBuffer[1] = v0 * scale_y;
+	gTexCoordBuffer[2] = u1 * scale_x;
+	gTexCoordBuffer[3] = v0 * scale_y;
+	gTexCoordBuffer[4] = u0 * scale_x;
+	gTexCoordBuffer[5] = v1 * scale_y;
+	gTexCoordBuffer[6] = u1 * scale_x;
+	gTexCoordBuffer[7] = v1 * scale_y;
 
 	glVertexPointer(3, GL_FLOAT, 0, gVertexBuffer);
 	glTexCoordPointer(2, GL_FLOAT, 0, gTexCoordBuffer);
@@ -868,42 +872,52 @@ void RendererCTR::Draw2DTextureR(f32 x0, f32 y0, f32 x1, f32 y1,
 								 f32 x2, f32 y2, f32 x3, f32 y3,
 								 f32 s, f32 t)
 {
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf((float*)mScreenToDevice.mRaw);
+	
 	glEnable(GL_BLEND);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	const f32 depth = 0.0f;
+	
+	CNativeTexture *texture = mBoundTexture[0];
+	float scale_x = texture->GetScaleX();
+	float scale_y = texture->GetScaleY();
 
 	glDisableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
 	gVertexBuffer[0] = N64ToScreenX(x0);
 	gVertexBuffer[1] = N64ToScreenY(y0);
-	gVertexBuffer[2] = depth;
+	gVertexBuffer[2] = 0.0f;
 	gVertexBuffer[3] = N64ToScreenX(x1);
 	gVertexBuffer[4] = N64ToScreenY(y1);
-	gVertexBuffer[5] = depth;
+	gVertexBuffer[5] = 0.0f;
 	gVertexBuffer[6] = N64ToScreenX(x2);
 	gVertexBuffer[7] = N64ToScreenY(y2);
-	gVertexBuffer[8] = depth;
+	gVertexBuffer[8] = 0.0f;
 	gVertexBuffer[9] = N64ToScreenX(x3);
 	gVertexBuffer[10] = N64ToScreenY(y3);
-	gVertexBuffer[11] = depth;
+	gVertexBuffer[11] = 0.0f;
 	gTexCoordBuffer[0] = 0.0f;
 	gTexCoordBuffer[1] = 0.0f;
-	gTexCoordBuffer[2] = s;
+	gTexCoordBuffer[2] = s * scale_x;
 	gTexCoordBuffer[3] = 0.0f;
-	gTexCoordBuffer[4] = s;
-	gTexCoordBuffer[5] = t;
+	gTexCoordBuffer[4] = s * scale_x;
+	gTexCoordBuffer[5] = t * scale_y;
 	gTexCoordBuffer[6] = 0.0f;
-	gTexCoordBuffer[7] = t;
+	gTexCoordBuffer[7] = t * scale_y;
 
 	glVertexPointer(3, GL_FLOAT, 0, gVertexBuffer);
 	glTexCoordPointer(2, GL_FLOAT, 0, gTexCoordBuffer);
+
 	gVertexBuffer += 12;
 	gTexCoordBuffer += 8;
+
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 }
 
 bool CreateRenderer()
