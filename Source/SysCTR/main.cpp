@@ -41,7 +41,7 @@ static aptHookCookie _hookCookie;
 bool isN3DS = false;
 bool shouldQuit = false;
 
-EAudioPluginMode enable_audio = APM_ENABLED_SYNC;
+EAudioPluginMode enable_audio = APM_ENABLED_ASYNC;
 
 #ifdef DAEDALUS_LOG
 void log2file(const char *format, ...) {

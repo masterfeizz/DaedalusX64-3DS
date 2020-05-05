@@ -119,10 +119,10 @@ static void DrawOptionsPage()
 
 	UI::DrawHeader("Options");
 
-	if(UI::DrawToggle(10,  22, 300, 62, "Toggle Audio", gAudioPluginEnabled == APM_ENABLED_SYNC))
+	if(UI::DrawToggle(10,  22, 300, 62, "Toggle Audio", gAudioPluginEnabled == APM_ENABLED_ASYNC))
 	{
-		gAudioPluginEnabled = (gAudioPluginEnabled == APM_ENABLED_SYNC ? APM_DISABLED : APM_ENABLED_SYNC);
-		gSpeedSyncEnabled   = (gAudioPluginEnabled == APM_ENABLED_SYNC ? false : true);
+		gAudioPluginEnabled = (gAudioPluginEnabled == APM_ENABLED_ASYNC ? APM_DISABLED : APM_ENABLED_ASYNC);
+		gSpeedSyncEnabled   = (gAudioPluginEnabled == APM_ENABLED_ASYNC ? false : true);
 	}
 
 	if(UI::DrawButton(10,  94, 300, 62, frameskipString))

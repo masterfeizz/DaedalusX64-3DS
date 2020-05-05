@@ -44,10 +44,7 @@ static const u32	CTR_NUM_SAMPLES = 512;
 static ndspWaveBuf waveBuf[2];
 static unsigned int waveBuf_id;
 
-static volatile s32 sound_volume = 32767;
-static volatile u32 sound_status;
-
-static bool audio_open = false;
+bool audioOpen = false;
 
 static AudioOutput * ac;
 
@@ -69,8 +66,6 @@ static void audioCallback(void *arg)
 
 static void AudioInit()
 {
-	sound_status = 0; // threads running
-
 	if (ndspInit() != 0)
 		return;
 
@@ -94,7 +89,7 @@ static void AudioInit()
 	ndspChnWaveBufAdd(0, &waveBuf[1]);
 
 	// Everything OK
-	audio_open = true;
+	audioOpen = true;
 }
 
 static void AudioExit()
@@ -106,7 +101,7 @@ static void AudioExit()
 	linearFree((void*)waveBuf[0].data_vaddr);
 	linearFree((void*)waveBuf[1].data_vaddr);
 
-	audio_open = false;
+	audioOpen = false;
 }
 
 AudioOutput::AudioOutput()
@@ -147,6 +142,7 @@ void AudioOutput::AddBuffer( u8 *start, u32 length )
 		break;
 
 	case APM_ENABLED_ASYNC:
+		mAudioBuffer->AddSamples( reinterpret_cast< const Sample * >( start ), num_samples, mFrequency, 44100 );
 		break;
 
 	case APM_ENABLED_SYNC:

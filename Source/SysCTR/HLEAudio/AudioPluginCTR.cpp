@@ -43,8 +43,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define DEFAULT_FREQUENCY 44100	// Taken from Mupen64 : )
 
+extern bool isN3DS;
 // FIXME: Hack!
 extern EAudioPluginMode enable_audio;
+
+static bool _runThread = false;
+
+static Thread asyncThread;
+static Handle audioRequest;
+
+static void asyncProcess(void *arg)
+{
+	while(_runThread)
+	{
+		svcWaitSynchronization(audioRequest, U64_MAX);
+		if(_runThread) Audio_Ucode();
+	}
+}
 
 //*****************************************************************************
 //
@@ -58,8 +73,15 @@ EAudioPluginMode gAudioPluginEnabled( APM_DISABLED );
 CAudioPluginCTR::CAudioPluginCTR()
 :	mAudioOutput( new AudioOutput )
 {
-	//mAudioOutput->SetAdaptFrequency( gAdaptFrequency );
 	gAudioPluginEnabled = enable_audio;
+
+	if(isN3DS)
+	{
+		_runThread = true;
+
+		svcCreateEvent(&audioRequest, RESET_ONESHOT);
+		asyncThread = threadCreate(asyncProcess, 0, (8 * 1024), 0x18, 2, true);
+	}
 }
 
 //*****************************************************************************
@@ -68,6 +90,14 @@ CAudioPluginCTR::CAudioPluginCTR()
 CAudioPluginCTR::~CAudioPluginCTR()
 {
 	delete mAudioOutput;
+
+	if(isN3DS)
+	{
+		_runThread = false;
+		
+		svcSignalEvent(audioRequest);
+		threadJoin(asyncThread, U64_MAX);
+	}
 }
 
 //*****************************************************************************
@@ -158,6 +188,11 @@ EProcessResult	CAudioPluginCTR::ProcessAList()
 			result = PR_COMPLETED;
 			break;
 		case APM_ENABLED_ASYNC:
+			if(isN3DS)
+				svcSignalEvent(audioRequest);
+			else
+				Audio_Ucode();
+			result = PR_COMPLETED;
 			break;
 		case APM_ENABLED_SYNC:
 			Audio_Ucode();
