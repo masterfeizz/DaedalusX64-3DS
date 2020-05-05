@@ -94,6 +94,7 @@ IGraphicsContext::IGraphicsContext()
 	gVertexBufferPtr = (float*)linearAlloc(0x600000);
 	gColorBufferPtr = (float*)linearAlloc(0x600000);
 	gTexCoordBufferPtr = (float*)linearAlloc(0x600000);
+
 	gVertexBuffer = gVertexBufferPtr;
 	gColorBuffer = gColorBufferPtr;
 	gTexCoordBuffer = gTexCoordBufferPtr;
@@ -101,6 +102,9 @@ IGraphicsContext::IGraphicsContext()
 
 IGraphicsContext::~IGraphicsContext()
 {
+	linearFree(gVertexBufferPtr);
+	linearFree(gColorBufferPtr);
+	linearFree(gTexCoordBufferPtr);
 }
 
 bool IGraphicsContext::Initialise()
@@ -153,15 +157,10 @@ void IGraphicsContext::ClearColBufferAndDepth(const c32 & colour)
 void IGraphicsContext::BeginFrame()
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
-
-	gVertexBuffer = gVertexBufferPtr;
-	gColorBuffer = gColorBufferPtr;
-	gTexCoordBuffer = gTexCoordBufferPtr;
 }
 
 void IGraphicsContext::EndFrame()
 {
-	glFinish();
 	HandleEndOfFrame();
 }
 
@@ -172,6 +171,10 @@ void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 	gfxSwapBuffersGpu();
 
 	ClearToBlack();
+
+	gVertexBuffer = gVertexBufferPtr;
+	gColorBuffer = gColorBufferPtr;
+	gTexCoordBuffer = gTexCoordBufferPtr;
 }
 
 void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)
