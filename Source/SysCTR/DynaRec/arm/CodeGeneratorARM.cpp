@@ -39,6 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 using namespace AssemblyUtils;
 
 static const u32		NUM_MIPS_REGISTERS( 32 );
+static const EArmReg	gMemoryBaseReg = ArmReg_R10;
 
 // XX this optimisation works very well on the PSP, option to disable it was removed
 static const bool		gDynarecStackOptimisation = true;
@@ -645,7 +646,7 @@ inline void CCodeGeneratorARM::GenerateLoad( EN64Reg base, s16 offset, u8 twiddl
 
 		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, CPU[base]._u32_0));
 
-		ADD(ArmReg_R1, ArmReg_R1, ArmReg_R10);
+		ADD(ArmReg_R1, ArmReg_R1, gMemoryBaseReg);
 
 		if(abs(offset) >> 8)
 		{
@@ -801,7 +802,7 @@ inline void CCodeGeneratorARM::GenerateStore( EN64Reg base, s16 offset, u8 twidd
 
 		LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CPU[base]._u32_0));
 
-		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R10);
+		ADD(ArmReg_R0, ArmReg_R0, gMemoryBaseReg);
 
 		if(abs(offset) >> 8)
 		{
@@ -901,7 +902,7 @@ bool CCodeGeneratorARM::GenerateCACHE( EN64Reg base, s16 offset, u32 cache_op )
 	{
 		LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CPU[base]._u32_0));
 		MOV32(ArmReg_R1, offset);
-		ADD_IMM(ArmReg_R0, ArmReg_R0, ArmReg_R1);
+		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R1);
 		MOV_IMM(ArmReg_R1, 0x20);
 		CALL(CCodeLabel( (void*)CPU_InvalidateICacheRange ));
 
@@ -1316,42 +1317,42 @@ void CCodeGeneratorARM::GenerateBGEZ( EN64Reg rs, const SBranchDetails * p_branc
 
 void CCodeGeneratorARM::GenerateADD_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(F0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(F2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VADD(F4, F0, F2);
-	VSTR(F4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
+	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	VADD(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
+	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
 }
 
 void CCodeGeneratorARM::GenerateSUB_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(F0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(F2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VSUB(F4, F0, F2);
-	VSTR(F4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
+	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	VSUB(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
+	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
 }
 
 void CCodeGeneratorARM::GenerateMUL_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(F0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(F2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VMUL(F4, F0, F2);
-	VSTR(F4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
+	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	VMUL(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
+	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
 }
 
 void CCodeGeneratorARM::GenerateDIV_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(F0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(F2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VDIV(F4, F0, F2);
-	VSTR(F4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
+	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	VDIV(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
+	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
 }
 
 void CCodeGeneratorARM::GenerateSQRT_S( u32 fd, u32 fs )
 {
-	VLDR(F0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
+	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
 
-	VSQRT(F4, F0);
-	VSTR(F4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	VSQRT(ArmVfpReg_S4, ArmVfpReg_S0);
+	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
 }
 
 void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
@@ -1367,14 +1368,14 @@ void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
 	}
 	else
 	{
-		VLDR(F0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-		VLDR(F2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+		VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
+		VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
 
 		MOV32(ArmReg_R2, ~FPCSR_C);
 		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
 		AND(ArmReg_R0, ArmReg_R1, ArmReg_R2);
 
-		VCMP(F0, F2);
+		VCMP(ArmVfpReg_S0, ArmVfpReg_S2);
 
 		MOV_IMM(ArmReg_R2, 0x02, 0x5);
 		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R2, cond);
