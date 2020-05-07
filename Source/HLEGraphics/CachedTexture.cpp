@@ -42,7 +42,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Utility/IO.h"
 #include "Utility/Profiler.h"
 
-static std::vector<u8>		gTexelBuffer {};
+static std::vector<u8>		gTexelBuffer;
 static NativePf8888			gPaletteBuffer[ 256 ];
 
 // NB: On the PSP we generate a lightweight hash of the texture data before
@@ -321,7 +321,7 @@ bool CachedTexture::HasExpired() const
 			if( g_ROM.ZELDA_HACK && (mTextureInfo.GetSize() == G_IM_SIZ_4b) && mTextureContentsHash != mTextureInfo.GenerateHashValue() ) return true;
 
 			//Check if texture has changed
-			//if( mTextureContentsHash != mTextureInfo.GenerateHashValue() ) return true;
+			if( mTextureContentsHash != mTextureInfo.GenerateHashValue() ) return true;
 		}
 	}
 
