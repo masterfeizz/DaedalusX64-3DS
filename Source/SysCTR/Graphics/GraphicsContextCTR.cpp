@@ -24,6 +24,11 @@ extern void HandleEndOfFrame();
 
 #define MAX_INDEXES 0xFFFF
 
+#define RATIO_4_3 0
+#define RATIO_5_3 1
+
+uint8_t aspectRatio = RATIO_4_3;
+
 float *gVertexBuffer;
 float *gColorBuffer;
 float *gTexCoordBuffer;
@@ -184,8 +189,17 @@ void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)
 
 void IGraphicsContext::ViewportType(u32 *d_width, u32 *d_height) const
 {
-	*d_width = SCR_WIDTH;
-	*d_height = SCR_HEIGHT;
+	switch(aspectRatio)
+	{
+		case RATIO_5_3:
+			*d_width = SCR_WIDTH;
+			*d_height = SCR_HEIGHT;
+			break;
+		default:
+			*d_width = 320;
+			*d_height = 240;
+			break;
+	}
 }
 
 void IGraphicsContext::SaveScreenshot(const char* filename, s32 x, s32 y, u32 width, u32 height)

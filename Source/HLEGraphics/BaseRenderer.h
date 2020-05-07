@@ -344,8 +344,13 @@ public:
 	virtual void 		ResetDebugState()						{}
 #endif
 
+#ifdef DAEDALUS_CTR
+	inline float		N64ToScreenX(float x) const				{ return x * mN64ToScreenScale.x; }
+	inline float		N64ToScreenY(float y) const				{ return y * mN64ToScreenScale.y; }
+#else
 	inline float		N64ToScreenX(float x) const				{ return x * mN64ToScreenScale.x + mN64ToScreenTranslate.x; }
 	inline float		N64ToScreenY(float y) const				{ return y * mN64ToScreenScale.y + mN64ToScreenTranslate.y; }
+#endif
 
 	CRefPtr<CNativeTexture> LoadTextureDirectly( const TextureInfo & ti );
 
