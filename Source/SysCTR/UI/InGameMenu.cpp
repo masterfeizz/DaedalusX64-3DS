@@ -30,6 +30,7 @@
 #include "Utility/ROMFile.h"
 #include "Utility/Timer.h"
 
+extern uint8_t aspectRatio;
 extern float gCurrentFramerate;
 extern EFrameskipValue gFrameskipValue;
 
@@ -119,10 +120,15 @@ static void DrawOptionsPage()
 
 	UI::DrawHeader("Options");
 
-	if(UI::DrawToggle(10,  22, 300, 62, "Toggle Audio", gAudioPluginEnabled == APM_ENABLED_ASYNC))
+	if(UI::DrawToggle(10,  22, 145, 62, "Toggle Audio", gAudioPluginEnabled == APM_ENABLED_ASYNC))
 	{
 		gAudioPluginEnabled = (gAudioPluginEnabled == APM_ENABLED_ASYNC ? APM_DISABLED : APM_ENABLED_ASYNC);
 		gSpeedSyncEnabled   = (gAudioPluginEnabled == APM_ENABLED_ASYNC ? false : true);
+	}
+
+	if(UI::DrawButton(165,  22, 145, 62, "Aspect Ratio"))
+	{
+		aspectRatio = !aspectRatio;
 	}
 
 	if(UI::DrawButton(10,  94, 300, 62, frameskipString))

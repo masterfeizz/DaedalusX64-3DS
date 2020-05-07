@@ -27,7 +27,7 @@ extern void HandleEndOfFrame();
 #define RATIO_4_3 0
 #define RATIO_5_3 1
 
-uint8_t aspectRatio = RATIO_4_3;
+uint8_t aspectRatio = RATIO_5_3;
 
 float *gVertexBuffer;
 float *gColorBuffer;
