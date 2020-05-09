@@ -485,7 +485,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 				case SpecOp_SLT:	GenerateSLT( rd, rs, rt, false );	handled = true; break;
 				case SpecOp_SLTU:	GenerateSLT( rd, rs, rt, true );	handled = true; break;
 
-				//case SpecOp_JR:		GenerateJR( rs, p_branch, p_branch_jump );	handled = true; exception = true; break; //Not Working
+				case SpecOp_JR:		GenerateJR( rs, p_branch, p_branch_jump );	handled = true; exception = true; break;
 
 				default: break;
 			}
@@ -1209,15 +1209,12 @@ void CCodeGeneratorARM::GenerateSLT( EN64Reg rd, EN64Reg rs, EN64Reg rt, bool is
 
 void CCodeGeneratorARM::GenerateJR( EN64Reg rs, const SBranchDetails * p_branch, CJumpLocation * p_branch_jump )
 {
-	//SetVar( &gCPUState.Delay, DO_DELAY );
+	SetVar( &gCPUState.Delay, DO_DELAY );
 
 	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CPU[rs]._u32_0));
 	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, TargetPC));
 
-	MOV32(ArmReg_R1, p_branch->TargetAddress);
-	CMP(ArmReg_R0, ArmReg_R1);
-
-	*p_branch_jump = BX_IMM(CCodeLabel(nullptr), NE);
+	*p_branch_jump = BX_IMM(CCodeLabel(nullptr), AL);
 }
 
 //*****************************************************************************
