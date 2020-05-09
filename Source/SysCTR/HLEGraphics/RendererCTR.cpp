@@ -630,13 +630,13 @@ void RendererCTR::RenderTriangles(DaedalusVtx *p_vertices, u32 num_vertices, boo
 {
 	if (mTnL.Flags.Texture)
 	{
+		glEnable(GL_TEXTURE_2D);
+		
 		UpdateTileSnapshots( mTextureTile );
 		CNativeTexture *texture = mBoundTexture[0];
 		
 		if( texture && (mTnL.Flags._u32 & (TNL_LIGHT|TNL_TEXGEN)) != (TNL_LIGHT|TNL_TEXGEN) )
 		{
-			glEnable(GL_TEXTURE_2D);
-
 			float scale_x = texture->GetScaleX();
 			float scale_y = texture->GetScaleY();
 				
