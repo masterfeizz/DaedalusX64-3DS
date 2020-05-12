@@ -38,7 +38,7 @@ class CAssemblyWriterARM
 		CAssemblyBuffer*	GetAssemblyBuffer() const									{ return mpAssemblyBuffer; }
 		void				SetAssemblyBuffer( CAssemblyBuffer * p_buffer )				{ mpAssemblyBuffer = p_buffer; }
 
-		void				InsertLiteralPool();
+		void				InsertLiteralPool(bool branch);
 		uint32_t			GetLiteralPoolDistance();
 
 		inline void NOP()	{	EmitDWORD(0xe1a00000);	}

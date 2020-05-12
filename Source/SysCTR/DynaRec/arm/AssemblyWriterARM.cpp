@@ -114,6 +114,7 @@ void	CAssemblyWriterARM::B(u16 offset, EArmCond cond)
 void	CAssemblyWriterARM::BX(EArmReg rm, EArmCond cond)
 {
 	EmitDWORD(0x012fff10 | rm | (cond << 28));
+	if(cond == AL)	InsertLiteralPool(false);
 }
 
 void	CAssemblyWriterARM::BLX(EArmReg rm, EArmCond cond)
@@ -374,14 +375,14 @@ void CAssemblyWriterARM::CALL( CCodeLabel target )
 void CAssemblyWriterARM::RET()
 {
 	POP(0x8ff0);
-	InsertLiteralPool();
+	InsertLiteralPool(false);
 }
 
-void CAssemblyWriterARM::InsertLiteralPool()
+void CAssemblyWriterARM::InsertLiteralPool(bool branch)
 {
 	if( literals.empty() ) return;
 
-	B( (literals.size() - 1) * 4 );
+	if(branch) B( (literals.size() - 1) * 4 );
 
 	for (int i = 0; i < literals.size(); i++)
 	{

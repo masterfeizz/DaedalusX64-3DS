@@ -73,8 +73,6 @@ void	CCodeGeneratorARM::Finalise( ExceptionHandlerFn p_exception_handler_fn, con
 		GenerateExceptionHander( p_exception_handler_fn, exception_handler_jumps );
 	}
 
-	InsertLiteralPool();
-
 	SetAssemblyBuffer( NULL );
 	mpPrimary = NULL;
 	mpSecondary = NULL;
@@ -310,8 +308,6 @@ void CCodeGeneratorARM::GenerateExceptionHander( ExceptionHandlerFn p_exception_
 CJumpLocation	CCodeGeneratorARM::GenerateBranchAlways( CCodeLabel target )
 {
 	CJumpLocation jumpLocation = BX_IMM(target);
-	InsertLiteralPool();
-
 	return jumpLocation;
 }
 
@@ -635,7 +631,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 
 	//Insure literal pool will be within range
 	if(GetLiteralPoolDistance() > 3900)
-		InsertLiteralPool();
+		InsertLiteralPool(true);
 
 	return exception_handler;
 }
