@@ -338,17 +338,6 @@ void RendererCTR::RenderUsingRenderSettings( const CBlendStates * states, Daedal
 		memcpy( mVtx_Save, p_vertices, num_vertices * sizeof( DaedalusVtx ) );
 	}*/
 
-	glEnableClientState(GL_COLOR_ARRAY);
-
-	glVertexPointer(3, GL_FLOAT, 0, gVertexBuffer);
-
-	for (uint32_t i = 0; i < num_vertices; i++) {
-		gVertexBuffer[0] = p_vertices[i].Position.x;
-		gVertexBuffer[1] = p_vertices[i].Position.y;
-		gVertexBuffer[2] = p_vertices[i].Position.z;
-		gVertexBuffer += 3;
-	}
-
 	for( u32 i {}; i < states->GetNumStates(); ++i )
 	{
 		const CRenderSettings *		settings( states->GetColourSettings( i ) );
