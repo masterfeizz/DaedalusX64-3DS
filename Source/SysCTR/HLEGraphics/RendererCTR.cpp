@@ -22,9 +22,10 @@
 BaseRenderer *gRenderer    = nullptr;
 RendererCTR  *gRendererCTR = nullptr;
 
-extern float *gVertexBuffer;
-extern float *gColorBuffer;
-extern float *gTexCoordBuffer;
+extern float 	*gVertexBuffer;
+extern uint32_t	*gColorBuffer;
+extern float 	*gTexCoordBuffer;
+extern uint32_t  gVertexCount;
 
 struct ScePspFMatrix4
 {
@@ -286,13 +287,6 @@ RendererCTR::SBlendStateEntry RendererCTR::LookupBlendState( u64 mux, bool two_c
 
 void RendererCTR::DrawPrimitives(DaedalusVtx * p_vertices, u32 num_vertices, u32 triangle_mode, bool has_texture)
 {
-	glEnableClientState(GL_COLOR_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-	glVertexPointer(3, GL_FLOAT, 0, gVertexBuffer);
-	glColorPointer(4, GL_FLOAT, 0, gColorBuffer);
-	glTexCoordPointer(2, GL_FLOAT, 0, gTexCoordBuffer);
-
 	for (uint32_t i = 0; i < num_vertices; i++)
 	{
 		gVertexBuffer[0] = p_vertices[i].Position.x;
@@ -302,17 +296,16 @@ void RendererCTR::DrawPrimitives(DaedalusVtx * p_vertices, u32 num_vertices, u32
 		gTexCoordBuffer[0] = p_vertices[i].Texture.x;
 		gTexCoordBuffer[1] = p_vertices[i].Texture.y;
 
-		gColorBuffer[0] = p_vertices[i].Colour.GetRf();
-		gColorBuffer[1] = p_vertices[i].Colour.GetGf();
-		gColorBuffer[2] = p_vertices[i].Colour.GetBf();
-		gColorBuffer[3] = p_vertices[i].Colour.GetAf();
+		gColorBuffer[0] = p_vertices[i].Colour.GetColour();
 
 		gVertexBuffer += 3;
 		gTexCoordBuffer += 2;
-		gColorBuffer += 4;
+		gColorBuffer += 1;
 	}
 
-	glDrawArrays(triangle_mode, 0, num_vertices);
+	glDrawArrays(triangle_mode, gVertexCount, num_vertices);
+
+	gVertexCount += num_vertices;
 }
 
 void RendererCTR::RenderUsingRenderSettings( const CBlendStates * states, DaedalusVtx * p_vertices, u32 num_vertices, u32 triangle_mode)
@@ -798,6 +791,8 @@ void RendererCTR::FillRect(const v2 & xy0, const v2 & xy1, u32 color)
 	
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_STRIP, true);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
 	free(p_vertices);
 }
 

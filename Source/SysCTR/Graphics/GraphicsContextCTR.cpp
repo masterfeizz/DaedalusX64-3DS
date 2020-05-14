@@ -29,12 +29,13 @@ extern void HandleEndOfFrame();
 
 uint8_t aspectRatio = RATIO_5_3;
 
-float *gVertexBuffer;
-float *gColorBuffer;
-float *gTexCoordBuffer;
-float *gVertexBufferPtr;
-float *gColorBufferPtr;
-float *gTexCoordBufferPtr;
+uint32_t  gVertexCount = 0;
+float    *gVertexBuffer;
+uint32_t *gColorBuffer;
+float    *gTexCoordBuffer;
+float    *gVertexBufferPtr;
+uint32_t *gColorBufferPtr;
+float    *gTexCoordBufferPtr;
 
 class IGraphicsContext : public CGraphicsContext
 {
@@ -97,7 +98,7 @@ IGraphicsContext::IGraphicsContext()
 	,	mDumpNextScreen(false)
 {	
 	gVertexBufferPtr = (float*)linearAlloc(0x600000);
-	gColorBufferPtr = (float*)linearAlloc(0x600000);
+	gColorBufferPtr = (uint32_t*)linearAlloc(0x200000);
 	gTexCoordBufferPtr = (float*)linearAlloc(0x600000);
 
 	gVertexBuffer = gVertexBufferPtr;
@@ -162,6 +163,12 @@ void IGraphicsContext::ClearColBufferAndDepth(const c32 & colour)
 void IGraphicsContext::BeginFrame()
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+	glVertexPointer(3, GL_FLOAT, 0, gVertexBufferPtr);
+	glColorPointer(4, GL_UNSIGNED_BYTE, 0, gColorBufferPtr);
+	glTexCoordPointer(2, GL_FLOAT, 0, gTexCoordBufferPtr);
 }
 
 void IGraphicsContext::EndFrame()
@@ -180,6 +187,7 @@ void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 	gVertexBuffer = gVertexBufferPtr;
 	gColorBuffer = gColorBufferPtr;
 	gTexCoordBuffer = gTexCoordBufferPtr;
+	gVertexCount = 0;
 }
 
 void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)
