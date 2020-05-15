@@ -87,7 +87,7 @@ class c32 /*: public NativePf8888*/
 		static const c32	Orange;
 		static const c32	Purple;
 		static const c32	Grey;
-
+	private:
 		u32		mColour;
 };
 DAEDALUS_STATIC_ASSERT( sizeof( c32 ) == 4 );

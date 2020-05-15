@@ -88,30 +88,22 @@ static void ROM_SimulatePIFBoot( ECicType cic_chip, u32 Country )
 		   RAMROM_GAME_OFFSET - RAMROM_BOOTSTRAP_OFFSET );
 
 	// Need to copy to SP_IMEM for CIC-6105 boot.
-	u8 * pIMemBase {(u8*)g_pMemoryBuffers[ MEM_SP_MEM ] + 0x1000};
+	u8 * pIMemBase = (u8*)g_pMemoryBuffers[ MEM_SP_MEM ] + 0x1000;
 
-	//FIX ME: Some of these are redundant, see CPU_RomOpen
-	//
-	// gCPUState.CPUControl[C0_SR]		= 0x34000000;	//*SR_FR |*/ SR_ERL | SR_CU2|SR_CU1|SR_CU0;
 	R4300_SetSR(0x34000000);
-	gCPUState.CPUControl[C0_CONFIG]._u32	= 0x0006E463;	// 0x00066463;
-
+	
+	gCPUState.CPUControl[C0_RAND]._u32 = 0x1F;
 	gCPUState.CPUControl[C0_COUNT]._u32 = 0x5000;
+	Memory_MI_SetRegister(MI_VERSION_REG, 0x02020102);
+	Memory_SP_SetRegister(SP_STATUS_REG, SP_STATUS_HALT);
 	gCPUState.CPUControl[C0_CAUSE]._u32 = 0x0000005C;
-	//ENTRYHI_REGISTER	  = 0xFFFFE0FF;
 	gCPUState.CPUControl[C0_CONTEXT]._u32 = 0x007FFFF0;
 	gCPUState.CPUControl[C0_EPC]._u32 = 0xFFFFFFFF;
 	gCPUState.CPUControl[C0_BADVADDR]._u32 = 0xFFFFFFFF;
 	gCPUState.CPUControl[C0_ERROR_EPC]._u32= 0xFFFFFFFF;
 	gCPUState.CPUControl[C0_CONFIG]._u32= 0x0006E463;
-	//
 
 	gGPR[0]._u64=0x0000000000000000LL;
-	gGPR[1]._u64=0x0000000000000000LL;
-	gGPR[2]._u64=0xFFFFFFFFD1731BE9LL;
-	gGPR[3]._u64=0xFFFFFFFFD1731BE9LL;
-	gGPR[4]._u64=0x0000000000001BE9LL;
-	gGPR[5]._u64=0xFFFFFFFFF45231E5LL;
 	gGPR[6]._u64=0xFFFFFFFFA4001F0CLL;
 	gGPR[7]._u64=0xFFFFFFFFA4001F08LL;
 	gGPR[8]._u64=0x00000000000000C0LL;
@@ -122,17 +114,12 @@ static void ROM_SimulatePIFBoot( ECicType cic_chip, u32 Country )
 	gGPR[17]._u64=0x0000000000000000LL;
 	gGPR[18]._u64=0x0000000000000000LL;
 	gGPR[19]._u64=0x0000000000000000LL;
-	gGPR[20]._u64=g_ROM.TvType;
 	gGPR[21]._u64=0x0000000000000000LL;
-	gGPR[23]._u64=0x0000000000000006LL;
-	gGPR[24]._u64=0x0000000000000000LL;
-	gGPR[25]._u64=0xFFFFFFFFD73f2993LL;
 	gGPR[26]._u64=0x0000000000000000LL;
 	gGPR[27]._u64=0x0000000000000000LL;
 	gGPR[28]._u64=0x0000000000000000LL;
 	gGPR[29]._u64=0xFFFFFFFFA4001FF0LL;
 	gGPR[30]._u64=0x0000000000000000LL;
-	gGPR[31]._u64=0xFFFFFFFFA4001554LL;
 
 	switch (Country) {
 		case 0x44: //Germany
@@ -141,8 +128,8 @@ static void ROM_SimulatePIFBoot( ECicType cic_chip, u32 Country )
 		case 0x50: //Europe
 		case 0x53: //Spanish
 		case 0x55: //Australia
-		case 0x58: // ????
-		case 0x59: // X (PAL)
+		case 0x58: // X (PAL)
+		case 0x59: // Y (PAL)
 			switch (cic_chip) {
 				case CIC_6102:
 					gGPR[5]._u64=0xFFFFFFFFC0F1D859LL;
@@ -174,9 +161,9 @@ static void ROM_SimulatePIFBoot( ECicType cic_chip, u32 Country )
 			gGPR[31]._u64=0xFFFFFFFFA4001554LL;
 			break;
 		case 0x37: // 7 (Beta)
-		case 0x41: // ????
-		case 0x45: //USA
-		case 0x4A: //Japan
+		case 0x41: // X (NTSC)
+		case 0x45: // USA
+		case 0x4A: // Japan
 		default:
 			switch (cic_chip) {
 				case CIC_6102:
@@ -381,7 +368,7 @@ void SpecificGameHacks( const ROMHeader & id )
 		g_ROM.DISABLE_SIM_CVT_D_S = true;
 		break;
 	case 0x4A54:	//Tom and Jerry
-	case 0x4d4a:	//Earthworm Jim
+	case 0x4D4A:	//Earthworm Jim
 	case 0x5150:	//PowerPuff Girls
 		g_ROM.DISABLE_SIM_CVT_D_S = true;
 		g_ROM.LOAD_T1_HACK = true;
@@ -515,9 +502,10 @@ bool ROM_LoadFile(const RomID & rom_id, const RomSettings & settings, const SRom
 
 	DumpROMInfo( g_ROM.rh );
 
+#ifndef DAEDALUS_CTR // Disabling this until we have preferences working
 	// Read and apply preferences from preferences.ini
 	preferences.Apply();
-
+#endif
 	// Parse cheat file this rom, if cheat feature is enabled
 	// This is also done when accessing the cheat menu
 	// But we do this when ROM is loaded too, to allow any forced enabled cheats to work.

@@ -74,12 +74,12 @@ static void Initialize()
 	_InitializeSvcHack();
 	aptHook(&_hookCookie, _AptEventHook, NULL);
 	romfsInit();
-
+	
 	APT_CheckNew3DS(&isN3DS);
 	osSetSpeedupEnable(true);
 
-	gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, true);
-	gfxSet3D(true);
+	gfxInit(GSP_BGR8_OES, GSP_BGR8_OES, true);
+	//gfxSet3D(true);
 
 	pglInit();
 

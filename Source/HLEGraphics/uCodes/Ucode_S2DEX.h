@@ -329,7 +329,7 @@ static inline void Draw_ObjSprite( const uObjSprite *sprite, ESpriteMode mode, c
 		DAEDALUS_ASSERT((sprite->imageFlags & 1) == 0, "Need to flip X" );
 		DAEDALUS_ASSERT((sprite->imageFlags & 0x10) == 0, "Need to flip Y" );
 #endif
-		gRenderer->Draw2DTextureR(x0, y0, x1, y1, x2, y2, x3, y3, imageW, imageH);
+		gRenderer->Draw2DTextureR(x0, y0, x1, y1, x2, y2, x3, y3, imageW, imageH, texture);
 		break;
 
 	case PARTIAL_ROTATION:
@@ -700,7 +700,7 @@ void DLParser_S2DEX_BgCopy( MicroCodeCommand command )
 	ti.SetLoadAddress      (RDPSegAddr(objBg->imagePtr));
 	ti.SetWidth            (imageW);
 	ti.SetHeight           (imageH);
-	ti.SetPitch			   (((imageW << objBg->imageSiz >> 1)>>3)<<3); //force 8-bit alignment
+	ti.SetPitch			   ((((imageW << objBg->imageSiz) >> 1)>>3)<<3); //force 8-bit alignment
 
 	ti.SetSwapped          (0);
 
@@ -747,7 +747,7 @@ void DLParser_S2DEX_Bg1cyc( MicroCodeCommand command )
 	ti.SetLoadAddress      (RDPSegAddr(objBg->imagePtr));
 	ti.SetWidth            (objBg->imageW/4);
 	ti.SetHeight           (objBg->imageH/4);
-	ti.SetPitch			   (((objBg->imageW/4 << ti.GetSize() >> 1)>>3)<<3); //force 8-bit alignment, this what sets our correct viewport.
+	ti.SetPitch			   ((((objBg->imageW/4 << ti.GetSize()) >> 1)>>3)<<3); //force 8-bit alignment, this what sets our correct viewport.
 
 	ti.SetSwapped          (0);
 
