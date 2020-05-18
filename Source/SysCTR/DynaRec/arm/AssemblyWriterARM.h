@@ -66,8 +66,9 @@ class CAssemblyWriterARM
 		void				ORR(EArmReg rd, EArmReg rn, EArmReg rm);
 		void				XOR(EArmReg rd, EArmReg rn, EArmReg rm);
 
+		void				TST    (EArmReg rn, EArmReg rm);
+		void				CMP    (EArmReg rn, EArmReg rm);
 		void				CMP_IMM(EArmReg rn, u8 imm);
-		void				CMP(EArmReg rn, EArmReg rm);
 
 		void				B  (u16 offset, EArmCond cond = AL);
 		void				BX (EArmReg rm, EArmCond cond = AL);

@@ -262,7 +262,6 @@ void CCodeGeneratorARM::GenerateIndirectExitCode( u32 num_instructions, CIndirec
 	// New return address is in gCPUState.TargetPC
 	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, TargetPC));
 	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CurrentPC));
-
 	SetVar( &gCPUState.Delay, NO_DELAY );
 
 	// No need to call CPU_SetPC(), as this is handled by CFragment when we exit
@@ -277,10 +276,10 @@ void CCodeGeneratorARM::GenerateIndirectExitCode( u32 num_instructions, CIndirec
 	CALL(CCodeLabel( (void*)IndirectExitMap_Lookup ));
 
 	// If the target was not found, exit
-	CMP_IMM( ArmReg_R0, 0 );
-	BX_IMM( exit_dynarec, EQ);
+	TST( ArmReg_R0, ArmReg_R0 );
+	BX_IMM( exit_dynarec, EQ );
 
-	B( ArmReg_R0 );
+	BX( ArmReg_R0 );
 }
 
 //*****************************************************************************
@@ -630,7 +629,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 	}
 
 	//Insure literal pool will be within range
-	if(GetLiteralPoolDistance() > 3900)
+	if(GetLiteralPoolDistance() > 4000)
 		InsertLiteralPool(true);
 
 	return exception_handler;
@@ -656,7 +655,7 @@ CJumpLocation CCodeGeneratorARM::ExecuteNativeFunction( CCodeLabel speed_hack, b
 	 
 	if( check_return )
 	{
-		CMP_IMM( ArmReg_R0, 0 );
+		TST( ArmReg_R0, ArmReg_R0 );
 		return BX_IMM( CCodeLabel(NULL), EQ );
 	}
 	else
