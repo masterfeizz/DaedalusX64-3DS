@@ -33,6 +33,7 @@
 extern uint8_t aspectRatio;
 extern float gCurrentFramerate;
 extern EFrameskipValue gFrameskipValue;
+extern RomInfo g_ROM;
 
 static uint64_t timer;
 static uint8_t currentPage = 0;
@@ -112,18 +113,20 @@ static void DrawConfirmPage()
 
 static void DrawOptionsPage()
 {
-	static uint32_t frameskip = 0;
+	SRomPreferences	preferences;
+
+	CPreferences::Get()->GetRomPreferences( g_ROM.mRomID, &preferences );
 
 	char frameskipString[30];
 
-	sprintf(frameskipString, "Frameskip: %s", Preferences_GetFrameskipDescription( (EFrameskipValue)frameskip ));
+	sprintf(frameskipString, "Frameskip: %s", Preferences_GetFrameskipDescription( preferences.Frameskip ));
 
 	UI::DrawHeader("Options");
 
-	if(UI::DrawToggle(10,  22, 145, 62, "Toggle Audio", gAudioPluginEnabled == APM_ENABLED_ASYNC))
+	if(UI::DrawToggle(10,  22, 145, 62, "Toggle Audio", preferences.AudioEnabled == APM_ENABLED_ASYNC))
 	{
-		gAudioPluginEnabled = (gAudioPluginEnabled == APM_ENABLED_ASYNC ? APM_DISABLED : APM_ENABLED_ASYNC);
-		gSpeedSyncEnabled   = (gAudioPluginEnabled == APM_ENABLED_ASYNC ? false : true);
+		preferences.AudioEnabled = (preferences.AudioEnabled == APM_ENABLED_ASYNC ? APM_DISABLED : APM_ENABLED_ASYNC);
+		preferences.SpeedSyncEnabled = (preferences.AudioEnabled == APM_ENABLED_ASYNC ? false : true);
 	}
 
 	if(UI::DrawButton(165,  22, 145, 62, "Aspect Ratio"))
@@ -133,17 +136,21 @@ static void DrawOptionsPage()
 
 	if(UI::DrawButton(10,  94, 300, 62, frameskipString))
 	{
-		if(++frameskip > 6)
-			frameskip = 0;
+		preferences.Frameskip = (EFrameskipValue) (preferences.Frameskip + 1);
 
-		gFrameskipValue = (EFrameskipValue)frameskip;
+		if(preferences.Frameskip > FV_2)
+			preferences.Frameskip = FV_DISABLED;
 	}
 
 	if(UI::DrawButton(10, 166, 300, 62, "Back"))
 	{
+		CPreferences::Get()->Commit();
 		currentPage = 0;
 	}
 	
+	CPreferences::Get()->SetRomPreferences( g_ROM.mRomID, preferences );
+
+	preferences.Apply();
 }
 
 static void DrawMainPage()

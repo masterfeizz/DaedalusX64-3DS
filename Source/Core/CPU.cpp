@@ -402,8 +402,7 @@ static bool	CPU_IsStateSimple()
 void CPU_SelectCore()
 {
 #ifdef DAEDALUS_ENABLE_DYNAREC
-	//if (gDynarecEnabled)
-	if(1)
+	if (gDynarecEnabled)
 		Dynamo_SelectCore();
 	else
 #endif
@@ -543,7 +542,7 @@ bool CPU_Run()
 {
 	if (!RomBuffer::IsRomLoaded())
 		return false;
-
+	
 	while (1)
 	{
 		gCPURunning = true;

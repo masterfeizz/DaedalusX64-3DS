@@ -45,7 +45,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 extern bool isN3DS;
 // FIXME: Hack!
-extern EAudioPluginMode enable_audio;
 
 static bool _runThread = false;
 
@@ -73,7 +72,6 @@ EAudioPluginMode gAudioPluginEnabled( APM_DISABLED );
 CAudioPluginCTR::CAudioPluginCTR()
 :	mAudioOutput( new AudioOutput )
 {
-	gAudioPluginEnabled = enable_audio;
 
 	if(isN3DS)
 	{
