@@ -404,8 +404,6 @@ u32 Patch_guOrtho()
 {
 TEST_DISABLE_GU_FUNCS
 
-#ifdef DAEDALUS_PSP_USE_VFPU
-	u32 s_TempMatrix[16];
 	REG32 l, r, b, t, n, f, s;
 
 	u8 * pMtxBase   = (u8 *)ReadAddress(gGPR[REG_a0]._u32_0);	// Fixed point Base address
@@ -418,45 +416,61 @@ TEST_DISABLE_GU_FUNCS
 	f._u32 = QuickRead32Bits(pStackBase, 0x18);	//Far
 	s._u32 = QuickRead32Bits(pStackBase,  0x1c);	//Scale
 
-	vfpu_matrix_Ortho((u8 *)s_TempMatrix, l._f32, r._f32, b._f32, t._f32, n._f32, f._f32, s._f32);
-
-//Convert to proper N64 fixed point matrix
 	u8 * pMtxLBaseHiBits = (u8 *)(pMtxBase + 0x00);
 	u8 * pMtxLBaseLoBits = (u8 *)(pMtxBase + 0x20);
 
-	u32 tmp_a, tmp_b;
-	u32 hibits,lobits;
-	u32 row, indx=0;
+	const f32 fScale = 65536.0f;
 
-	for (row = 0; row < 4; row++)
-	{
-		tmp_a = s_TempMatrix[indx++];
-		tmp_b = s_TempMatrix[indx++];
+	f32 fRmL = r._f32 - l._f32;
+	f32 fTmB = t._f32 - b._f32;
+	f32 fFmN = f._f32 - n._f32;
+	f32 fRpL = r._f32 + l._f32;
+	f32 fTpB = t._f32 + b._f32;
+	f32 fFpN = f._f32 + n._f32;
+	
+	l._f32 =  2.0f * s._f32 / fRmL;
+	r._f32 =  2.0f * s._f32 / fTmB;
+	b._f32 = -2.0f * s._f32 / fFmN;
 
-		hibits = (tmp_a & 0xFFFF0000) | (tmp_b >> 16);
-		QuickWrite32Bits(pMtxLBaseHiBits, (row << 3) , hibits);
-
-		lobits = (tmp_a << 16) | (tmp_b & 0x0000FFFF);
-		QuickWrite32Bits(pMtxLBaseLoBits, (row << 3) , lobits);
-
-		/////
-		tmp_a = s_TempMatrix[indx++];
-		tmp_b = s_TempMatrix[indx++];
-
-		hibits = (tmp_a & 0xFFFF0000) | (tmp_b >> 16);
-		QuickWrite32Bits(pMtxLBaseHiBits, (row << 3) + 4, hibits);
-
-		lobits = (tmp_a << 16) | (tmp_b & 0x0000FFFF);
-		QuickWrite32Bits(pMtxLBaseLoBits, (row << 3) + 4, lobits);
-	}
+	t._f32 = -fRpL * s._f32 / fRmL;
+	n._f32 = -fTpB * s._f32 / fTmB;
+	f._f32 = -fFpN * s._f32 / fFmN;
+	
+	u32 l_u = (s32)(l._f32 * fScale); // 0
+	u32 r_u = (s32)(r._f32 * fScale); // 5
+	u32 b_u = (s32)(b._f32 * fScale); // 10
+	u32 t_u = (s32)(t._f32 * fScale); // 12
+	u32 n_u = (s32)(n._f32 * fScale); // 13
+	u32 f_u = (s32)(f._f32 * fScale); // 14
+	u32 s_u = (s32)(s._f32 * fScale); // 15
+	
+	// 0,1
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x00, l_u & 0xFFFF0000);
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x00, l_u << 16);
+	// 2,3
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x04, 0);
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x04, 0);
+	// 4,5
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x08, r_u >> 16);
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x08, r_u & 0x0000FFFF);
+	// 6,7
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x0C, 0);
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x0C, 0);
+	// 8,9
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x10, 0);
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x10, 0);
+	// 10,11
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x14, b_u & 0xFFFF0000);
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x14, b_u << 16);
+	// 12,13
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x18, (t_u & 0xFFFF0000) | (n_u >> 16));
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x18, (n_u & 0x0000FFFF) | (t_u << 16));
+	// 14,15
+	QuickWrite32Bits(pMtxLBaseHiBits, 0x1C, (f_u & 0xFFFF0000) | (s_u >> 16));
+	QuickWrite32Bits(pMtxLBaseLoBits, 0x1C, (s_u & 0x0000FFFF) | (f_u << 16));
 
 	return PATCH_RET_JR_RA;
-#else
-	// FIX ME
-	return PATCH_RET_NOT_PROCESSED0(guOrtho);
-#endif
 }
-
 //RotateF //Corn
 u32 Patch_guRotateF()
 {
