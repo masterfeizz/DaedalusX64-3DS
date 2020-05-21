@@ -206,6 +206,8 @@ RendererCTR::~RendererCTR()
 
 void RendererCTR::RestoreRenderStates()
 {
+	pglSelectScreen(GFX_TOP, GFX_LEFT);
+	
 	// Initialise the device to our default state
 	glEnable(GL_TEXTURE_2D);
 	
@@ -696,7 +698,6 @@ void RendererCTR::TexRect(u32 tile_idx, const v2 & xy0, const v2 & xy1, TexCoord
 
 	glEnable(GL_TEXTURE_2D);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_STRIP, gRDPOtherMode.depth_source ? false : true);
-	glDisable(GL_TEXTURE_2D);
 
 	free(p_vertices);
 }
@@ -755,7 +756,6 @@ void RendererCTR::TexRectFlip(u32 tile_idx, const v2 & xy0, const v2 & xy1, TexC
 
 	glEnable(GL_TEXTURE_2D);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_STRIP, gRDPOtherMode.depth_source ? false : true);
-	glDisable(GL_TEXTURE_2D);
 
 	free(p_vertices);
 }
@@ -789,6 +789,8 @@ void RendererCTR::FillRect(const v2 & xy0, const v2 & xy1, u32 color)
 	p_vertices[3].Position.z = 0.0f;
 	p_vertices[3].Colour = c32(color);
 	
+	glDisable(GL_TEXTURE_2D);
+
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_STRIP, true);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -841,7 +843,9 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 	p_vertices[3].Texture.x = u1 * scale_x;
 	p_vertices[3].Texture.y = v1 * scale_y;
 
+	glEnable(GL_TEXTURE_2D);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_STRIP, true);
+
 	free(p_vertices);
 }
 
@@ -884,7 +888,9 @@ void RendererCTR::Draw2DTextureR(f32 x0, f32 y0, f32 x1, f32 y1, f32 x2,
 	p_vertices[3].Texture.x = 0.0f;
 	p_vertices[3].Texture.y = t * scale_y;
 	
+	glEnable(GL_TEXTURE_2D);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_FAN, true);
+
 	free(p_vertices);
 }
 
