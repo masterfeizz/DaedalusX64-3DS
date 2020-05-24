@@ -69,12 +69,41 @@ static void _AptEventHook(APT_HookType type, void* param)
 	}
 }
 
+static void CheckDSP()
+{
+	FILE *dsp = fopen("sdmc:/3ds/dspfirm.cdc", "r");
+	if (dsp == NULL) {
+		fclose(dsp);
+
+		UI::RestoreRenderState();
+
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		UI::DrawText( 4, 12, "No DSP dump found!");
+		UI::DrawText( 4, 32, "Press any key to exit..");
+
+		pglSwapBuffers();
+		UI::ClearSecondScreen(GFX_TOP);
+		gfxSwapBuffersGpu();
+
+		while(aptMainLoop())
+		{
+			hidScanInput();
+
+			if(hidKeysDown())
+				exit(1);
+		}
+	}
+	fclose(dsp);
+}
+
 static void Initialize()
 {
 	_InitializeSvcHack();
 	aptHook(&_hookCookie, _AptEventHook, NULL);
 	romfsInit();
-	
+
 	APT_CheckNew3DS(&isN3DS);
 	osSetSpeedupEnable(true);
 
@@ -88,6 +117,8 @@ static void Initialize()
 
 	IO::Directory::EnsureExists( DAEDALUS_CTR_PATH("SaveStates/") );
 	UI::Initialize();
+
+	CheckDSP();
 
 	System_Init();
 }
