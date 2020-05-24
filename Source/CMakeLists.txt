@@ -364,8 +364,7 @@ if (CTR_RELEASE)
 	set(APP_BANNER "${PROJECT_SOURCE_DIR}/SysCTR/Resources/banner.bnr")
 	set(APP_AUDIO "${PROJECT_SOURCE_DIR}/SysCTR/Resources/audio_silent.wav")
 	set(APP_RSF "${PROJECT_SOURCE_DIR}/SysCTR/Resources/template.rsf")
-	set(APP_ROMFS_DIR "${PROJECT_SOURCE_DIR}/SysCTR/Resources/RomFS")
-	set(APP_ROMFS_BIN "${PROJECT_SOURCE_DIR}/SysCTR/Resources/romfs.bin")
+	set(APP_ROMFS_DIR "${PROJECT_SOURCE_DIR}/SysCTR/Resources/romfs")
 
 	add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.3dsx
@@ -381,9 +380,10 @@ if (CTR_RELEASE)
 				-o ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.cia
 				-elf ${PROJECT_NAME}.elf
 				-rsf ${APP_RSF}
+					-DAPP_TITLE=${APP_TITLE}
+					-DAPP_ROMFS_DIR=${APP_ROMFS_DIR}
 				-banner ${APP_BANNER}
 				-icon ${APP_SMDH}
-				-romfs ${APP_ROMFS_BIN}
 		DEPENDS ${PROJECT_NAME}.elf ${APP_RSF}
     )
 
