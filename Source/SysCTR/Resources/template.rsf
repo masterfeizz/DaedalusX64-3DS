@@ -1,11 +1,15 @@
 BasicInfo:
-  Title                   : Daedalusx64
+  Title                   : $(APP_TITLE)
   ProductCode             : CTR-P-DAED
   Logo                    : Nintendo # Nintendo / Licensed / Distributed / iQue / iQueForSystem
 
 TitleInfo:
   Category                : Application
   UniqueId                : 0xDAED3
+
+RomFs:
+  # Specifies the root path of the read only file system to include in the ROM.
+  RootPath                : $(APP_ROMFS_DIR)
 
 Option:
   UseOnSD                 : true # true if App is to be installed to SD
