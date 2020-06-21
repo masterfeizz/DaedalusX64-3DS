@@ -8,4 +8,5 @@ _EnterDynaRec:
     push {r4-r11, lr}
     mov r12, r1
     mov r10, r2
+	mov r9,  r3
     bx  r0

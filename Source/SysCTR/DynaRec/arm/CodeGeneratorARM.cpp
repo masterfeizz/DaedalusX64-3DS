@@ -40,6 +40,7 @@ using namespace AssemblyUtils;
 
 static const u32		NUM_MIPS_REGISTERS( 32 );
 static const EArmReg	gMemoryBaseReg = ArmReg_R10;
+static const EArmReg	gMemUpperBoundReg = ArmReg_R9;
 
 // XX this optimisation works very well on the PSP, option to disable it was removed
 static const bool		gDynarecStackOptimisation = true;
@@ -710,12 +711,45 @@ inline void CCodeGeneratorARM::GenerateLoad( EN64Reg base, s16 offset, u8 twiddl
 	}
 	else
 	{	
+		EArmReg LoadReg = ArmReg_R0;
 		//Slow Load
-		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, CPU[base]._u32_0));
+		LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CPU[base]._u32_0));
+		
+		
+		if (offset != 0) {
 		MOV32(ArmReg_R2, offset);
-		ADD(ArmReg_R0, ArmReg_R1, ArmReg_R2);
+		ADD(ArmReg_R1, LoadReg, ArmReg_R2);
+		LoadReg = ArmReg_R1;
+		}
+		
+		if (twiddle != 0 )
+		{
+			MOV32(ArmReg_R2, twiddle);
+			XOR(ArmReg_R1, LoadReg, ArmReg_R2);
+			LoadReg = ArmReg_R1;
+		}
+		CMP(LoadReg, gMemUpperBoundReg);
+		CJumpLocation loc = BX_IMM(CCodeLabel { NULL }, GE );
+		ADD(LoadReg, LoadReg, gMemoryBaseReg);
+		switch(bits)
+		{
+			case 32:	LDR(ArmReg_R0, LoadReg, 0); break;
 
+			case 16:	if(is_signed)	{ LDRSH(ArmReg_R0, LoadReg, 0); }
+						else			{ LDRH (ArmReg_R0, LoadReg, 0); } break; 
+
+			case 8:		if(is_signed)	{ LDRSB(ArmReg_R0, LoadReg, 0); }
+						else			{ LDRB (ArmReg_R0, LoadReg, 0); } break; 
+		}
+		CJumpLocation skip = GenerateBranchAlways( CCodeLabel { NULL });
+		PatchJumpLong( loc, GetAssemblyBuffer()->GetLabel() );
+		
+		if (offset != 0) {
+			MOV32(ArmReg_R2, offset);
+			ADD(ArmReg_R0, ArmReg_R0, ArmReg_R2);
+		}
 		CALL( CCodeLabel( (void*)p_read_memory ) );
+		PatchJumpLong( skip, GetAssemblyBuffer()->GetLabel() );
 	}
 }
 
@@ -853,12 +887,44 @@ inline void CCodeGeneratorARM::GenerateStore( EN64Reg base, s16 offset, u8 twidd
 	}
 	else
 	{	
+		EArmReg LoadReg = ArmReg_R0;
 		//Slow Store
 		LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CPU[base]._u32_0));
-		MOV32(ArmReg_R2, offset);
-		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R2);
+		
+		
+		if (offset != 0) {
+			MOV32(ArmReg_R2, offset);
+		
+			ADD(ArmReg_R2, ArmReg_R0, ArmReg_R2);
+			LoadReg = ArmReg_R2;
+		}
+		
+		if (twiddle != 0)
+		{
+			MOV32(ArmReg_R3, twiddle);
+			XOR(ArmReg_R2, LoadReg, ArmReg_R3);
+			LoadReg = ArmReg_R2;
+		}
+		
+		CMP(LoadReg, gMemUpperBoundReg);
+		CJumpLocation loc = BX_IMM(CCodeLabel { NULL }, GE );
+		ADD(LoadReg, LoadReg, gMemoryBaseReg);
+		switch(bits)
+		{
+			case 32:	STR (ArmReg_R1, LoadReg, 0); break;
+			case 16:	STRH(ArmReg_R1, LoadReg, 0); break; 
+			case 8:		STRB(ArmReg_R1, LoadReg, 0); break; 
+		}
 
+		CJumpLocation skip = GenerateBranchAlways( CCodeLabel { NULL });
+		PatchJumpLong( loc, GetAssemblyBuffer()->GetLabel() );
+		
+		if (offset != 0) {
+			MOV32(ArmReg_R2, offset);
+			ADD(ArmReg_R0, ArmReg_R0, ArmReg_R2);
+		}
 		CALL( CCodeLabel( (void*)p_write_memory ) );
+		PatchJumpLong( skip, GetAssemblyBuffer()->GetLabel() );
 	}
 }
 
