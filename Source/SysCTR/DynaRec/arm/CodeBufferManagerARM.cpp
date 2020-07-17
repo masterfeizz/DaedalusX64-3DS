@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Debug/DBGConsole.h"
 #include "CodeGeneratorARM.h"
 
-#define CODE_BUFFER_SIZE (16 * 1024 * 1024)
+#define CODE_BUFFER_SIZE (8 * 1024 * 1024)
 
 class CCodeBufferManagerARM : public CCodeBufferManager
 {
@@ -82,12 +82,13 @@ bool	CCodeBufferManagerARM::Initialise()
 	// mpSecondBuffer is currently unused
 
 	#ifdef DAEDALUS_CTR
-	mpBuffer = (u8*)memalign(4096, CODE_BUFFER_SIZE);
-
-	if (mpBuffer == NULL)
+	mpBuffer = (u8*)memalign(4096, CODE_BUFFER_SIZE*2);
+	mpSecondBuffer = mpBuffer + CODE_BUFFER_SIZE;
+	if (mpBuffer == NULL || mpSecondBuffer == NULL)
 		return false;
 
-	_SetMemoryPermission((unsigned int*)mpBuffer, CODE_BUFFER_SIZE, 7);
+	_SetMemoryPermission((unsigned int*)mpBuffer, CODE_BUFFER_SIZE*2, 7);
+	//_SetMemoryPermission((unsigned int*)mpSecondBuffer, CODE_BUFFER_SIZE, 7);
 	#endif
 
 	mBufferPtr = 0;
@@ -113,15 +114,15 @@ void	CCodeBufferManagerARM::Reset()
 //*****************************************************************************
 void	CCodeBufferManagerARM::Finalise()
 {
-	if (mpBuffer != NULL)
+	if (mpBuffer != NULL && mpSecondBuffer != NULL)
 	{
 		#ifdef DAEDALUS_CTR
-		_SetMemoryPermission((unsigned int*)mpBuffer, CODE_BUFFER_SIZE / 4096, 3);
-		_SetMemoryPermission((unsigned int*)mpSecondBuffer, CODE_BUFFER_SIZE / 4096, 3);
+		_SetMemoryPermission((unsigned int*)mpBuffer, CODE_BUFFER_SIZE*2 / 4096, 3);
+		//_SetMemoryPermission((unsigned int*)mpSecondBuffer, CODE_BUFFER_SIZE / 4096, 3);
 		#endif
 		
 		free(mpBuffer);
-		free(mpSecondBuffer);
+		//free(mpSecondBuffer);
 
 		mpBuffer = NULL;
 		mpSecondBuffer = NULL;
@@ -138,6 +139,9 @@ CCodeGenerator * CCodeBufferManagerARM::StartNewBlock()
 
 	mBufferPtr = aligned_ptr;
 
+	u32 aligned_ptr2((mSecondBufferPtr + 15) & (~15));
+	mSecondBufferPtr = aligned_ptr2;
+
 	mPrimaryBuffer.SetBuffer( mpBuffer + mBufferPtr );
 	mSecondaryBuffer.SetBuffer( mpSecondBuffer + mSecondBufferPtr );
 
@@ -152,6 +156,7 @@ u32 CCodeBufferManagerARM::FinaliseCurrentBlock()
 	u32		main_block_size( mPrimaryBuffer.GetSize() );
 
 	mBufferPtr += main_block_size;
+	mSecondBufferPtr += mSecondaryBuffer.GetSize();
 
 	#if 0 //Second buffer is currently unused
 	mSecondBufferPtr += mSecondaryBuffer.GetSize();

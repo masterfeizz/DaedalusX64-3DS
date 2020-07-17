@@ -33,11 +33,15 @@ class CAssemblyWriterARM
 	};
 
 	public:
-		CAssemblyWriterARM( CAssemblyBuffer * p_buffer ) : mpAssemblyBuffer( p_buffer )	{}
+		CAssemblyWriterARM(CAssemblyBuffer* p_buffer_a, CAssemblyBuffer* p_buffer_b) : mpAssemblyBuffer(p_buffer_a), mpAssemblyBufferA(p_buffer_a), mpAssemblyBufferB(p_buffer_b) { literals = &literalsA; }
 
 		CAssemblyBuffer*	GetAssemblyBuffer() const									{ return mpAssemblyBuffer; }
 		void				SetAssemblyBuffer( CAssemblyBuffer * p_buffer )				{ mpAssemblyBuffer = p_buffer; }
 
+		void                SetBufferA() { mpAssemblyBuffer = mpAssemblyBufferA; literals = &literalsA; }
+		void                SetBufferB() { mpAssemblyBuffer = mpAssemblyBufferB; literals = &literalsB; }
+		bool                IsBufferB() { return mpAssemblyBuffer == mpAssemblyBufferB; }
+		bool                IsBufferA() { return mpAssemblyBuffer == mpAssemblyBufferA; }
 		void				InsertLiteralPool(bool branch);
 		uint32_t			GetLiteralPoolDistance();
 
@@ -156,5 +160,9 @@ class CAssemblyWriterARM
 		}
 
 		CAssemblyBuffer*	mpAssemblyBuffer;
-		std::vector<Literal> literals;
+		CAssemblyBuffer*    mpAssemblyBufferA;
+		CAssemblyBuffer*    mpAssemblyBufferB;
+		std::vector<Literal>* literals;
+		std::vector<Literal> literalsA;
+		std::vector<Literal> literalsB;
 };

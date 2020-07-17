@@ -385,7 +385,7 @@ void	CAssemblyWriterARM::MOV32(EArmReg reg, u32 imm)
 	}
 	else
 	{
-		literals.push_back( Literal { mpAssemblyBuffer->GetLabel(), imm } );
+		literals->push_back( Literal { mpAssemblyBuffer->GetLabel(), imm } );
 		//This will be patched later to reflect the location of the literal pool
 		LDR(reg, ArmReg_R15, 0x00);
 	}
@@ -430,27 +430,27 @@ void CAssemblyWriterARM::RET()
 
 void CAssemblyWriterARM::InsertLiteralPool(bool branch)
 {
-	if( literals.empty() ) return;
+	if( literals->empty() ) return;
 
-	if(branch) B( (literals.size() - 1) * 4 );
+	if(branch) B( (literals->size() - 1) * 4 );
 
-	for (int i = 0; i < literals.size(); i++)
+	for (int i = 0; i < literals->size(); i++)
 	{
-		uint32_t *op =  (uint32_t*)literals[i].Target.GetTarget();
+		uint32_t *op =  (uint32_t*)(*literals)[i].Target.GetTarget();
 		uint32_t offset = mpAssemblyBuffer->GetLabel().GetTargetU32() - (uint32_t)op;
 
 		*op = *op | (offset - 8);
 
-		EmitDWORD(literals[i].Value);
+		EmitDWORD((*literals)[i].Value);
 	}
 
-	literals.clear();
+	literals->clear();
 }
 
 uint32_t CAssemblyWriterARM::GetLiteralPoolDistance()
 {
-	if(literals.empty())
+	if(literals->empty())
 		return 0;
 
-	return mpAssemblyBuffer->GetLabel().GetTargetU32() - literals[0].Target.GetTargetU32();
+	return mpAssemblyBuffer->GetLabel().GetTargetU32() - (*literals)[0].Target.GetTargetU32();
 }

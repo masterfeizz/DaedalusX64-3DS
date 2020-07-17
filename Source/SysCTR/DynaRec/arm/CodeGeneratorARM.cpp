@@ -81,7 +81,7 @@ void Dynarec_SetCPUStuffToDo(){}
 //*****************************************************************************
 CCodeGeneratorARM::CCodeGeneratorARM( CAssemblyBuffer * p_primary, CAssemblyBuffer * p_secondary )
 :	CCodeGenerator( )
-,	CAssemblyWriterARM( p_primary )
+,	CAssemblyWriterARM( p_primary, p_secondary )
 ,	mSpCachedInESI( false )
 ,	mSetSpPostUpdate( 0 )
 ,	mpPrimary( p_primary )
@@ -97,6 +97,10 @@ void	CCodeGeneratorARM::Finalise( ExceptionHandlerFn p_exception_handler_fn, con
 	{
 		GenerateExceptionHander( p_exception_handler_fn, exception_handler_jumps, exception_handler_snapshots );
 	}
+
+	SetBufferA();
+	InsertLiteralPool(false);
+	SetBufferB();
 	InsertLiteralPool(false);
 	SetAssemblyBuffer( NULL );
 	mpPrimary = NULL;
@@ -815,6 +819,7 @@ void CCodeGeneratorARM::GenerateExceptionHander( ExceptionHandlerFn p_exception_
 {
 	CCodeLabel exception_handler( GetAssemblyBuffer()->GetLabel() );
 
+	SetBufferB();
 	MOV32(ArmReg_R0, (u32)p_exception_handler_fn );
 	BLX(ArmReg_R0);
 
@@ -1270,7 +1275,21 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 			case 8:		if(is_signed)	{ LDRSB_REG(arm_dest, load_reg, gMemoryBaseReg); }
 						else			{ LDRB_REG(arm_dest, load_reg, gMemoryBaseReg); } break;
 		}
-		CJumpLocation skip = GenerateBranchAlways( CCodeLabel { NULL });
+
+		CJumpLocation skip;
+		CCodeLabel current; 
+		
+		if (IsBufferB())
+		{
+			skip = GenerateBranchAlways( CCodeLabel { NULL });
+		}
+		else
+		{
+			current = GetAssemblyBuffer()->GetLabel();
+			SetBufferB();
+		}
+		
+
 		PatchJumpLong( loc, GetAssemblyBuffer()->GetLabel() );
 		load_reg = reg_base;
 		if (offset != 0) {
@@ -1295,7 +1314,19 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 			MOV(arm_dest, ArmReg_R0);
 		}
 		mRegisterCache = current_regs;
-		PatchJumpLong( skip, GetAssemblyBuffer()->GetLabel() );
+
+		
+		if (current.IsSet())
+		{
+			// return back to our original buffer
+			GenerateBranchAlways(current);
+			SetBufferA();
+		}
+		else
+		{	
+			 // patch the unconditional branch to skip the slow path
+			PatchJumpLong(skip, GetAssemblyBuffer()->GetLabel());
+		}
 	}
 }
 
@@ -1483,7 +1514,18 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 			case 8:		STRB_REG(arm_src, store_reg, gMemoryBaseReg); break; 
 		}
 
-		CJumpLocation skip = GenerateBranchAlways( CCodeLabel { NULL });
+		CJumpLocation skip;
+		CCodeLabel current; 
+		
+		if (IsBufferB())
+		{
+			skip = GenerateBranchAlways( CCodeLabel { NULL });
+		}
+		else
+		{
+			current = GetAssemblyBuffer()->GetLabel();
+			SetBufferB();
+		}
 		PatchJumpLong( loc, GetAssemblyBuffer()->GetLabel() );
 		
 		
@@ -1511,7 +1553,17 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 		// Restore all registers BEFORE copying back final value
 		RestoreAllRegisters(mRegisterCache, current_regs);
 		mRegisterCache = current_regs;
-		PatchJumpLong( skip, GetAssemblyBuffer()->GetLabel() );
+		if (current.IsSet())
+		{
+			// return back to our original buffer
+			GenerateBranchAlways(current);
+			SetBufferA();
+		}
+		else
+		{	
+			 // patch the unconditional branch to skip the slow path
+			PatchJumpLong(skip, GetAssemblyBuffer()->GetLabel());
+		}
 	}
 }
 
