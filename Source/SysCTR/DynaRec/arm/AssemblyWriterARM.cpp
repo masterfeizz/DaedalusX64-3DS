@@ -340,6 +340,36 @@ void	CAssemblyWriterARM::VDIV_D(EArmVfpReg Dd, EArmVfpReg Dn, EArmVfpReg Dm)
 	EmitDWORD(0xee800b00 | (((Dd >> 4) & 1) << 22) | ((Dn & 15) << 16) | ((Dd & 15) << 12) | (((Dn >> 4) & 1) << 7) | (((Dm >> 4) & 1) << 5) | (Dm & 15));
 }
 
+void	CAssemblyWriterARM::VMOV_S(EArmReg Rt, EArmVfpReg Dm)
+{
+	EmitDWORD(0xee100a10 | ((Dm >> 1) << 16) | (Rt << 12) | ((Dm & 0x1) << 7));
+}
+
+void	CAssemblyWriterARM::VMOV_S( EArmVfpReg Dm, EArmReg Rt)
+{
+	EmitDWORD(0xee000a10 | ((Dm >> 1) << 16) | (Rt << 12) | ((Dm & 0x1) << 7));
+}
+
+void	CAssemblyWriterARM::VMOV_L(EArmReg Rt, EArmVfpReg Dm)
+{
+	EmitDWORD(0xee100b10 | ((Dm) << 16) | (Rt << 12));
+}
+
+void	CAssemblyWriterARM::VMOV_L(EArmVfpReg Dm, EArmReg Rt)
+{
+	EmitDWORD(0xee000b10 | ((Dm) << 16) | (Rt << 12));
+}
+
+void	CAssemblyWriterARM::VMOV_H(EArmReg Rt, EArmVfpReg Dm)
+{
+	EmitDWORD(0xee300b10 | ((Dm) << 16) | (Rt << 12));
+}
+
+void	CAssemblyWriterARM::VMOV_H(EArmVfpReg Dm, EArmReg Rt)
+{
+	EmitDWORD(0xee200b10 | ((Dm) << 16) | (Rt << 12));
+}
+
 void	CAssemblyWriterARM::VMOV(EArmVfpReg Dm, EArmReg Rt, EArmReg Rt2)
 {
 	EmitDWORD(0xec400b10 | (Rt2 << 16) | (Rt << 12) | (Dm & 0b1111) | (((Dm >> 4) & 1) << 5));

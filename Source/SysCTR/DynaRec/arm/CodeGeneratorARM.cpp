@@ -341,6 +341,34 @@ void CCodeGeneratorARM::SetVar(const u32* p_var, EArmReg reg)
 	STR(reg, ArmReg_R12, offset);
 }
 
+void CCodeGeneratorARM::SetFloatVar(const f32* p_var, EArmVfpReg reg)
+{
+	uint16_t offset = (u32)p_var - (u32)&gCPUState;
+	
+	VSTR(reg, ArmReg_R12, offset);
+}
+
+void CCodeGeneratorARM::GetFloatVar( EArmVfpReg dst_reg, const f32 * p_var )
+{
+	uint16_t offset = (u32)p_var - (u32)&gCPUState;
+	
+	VLDR(dst_reg, ArmReg_R12, offset);
+}
+
+void CCodeGeneratorARM::SetDoubleVar(const f64* p_var, EArmVfpReg reg)
+{
+	uint16_t offset = (u32)p_var - (u32)&gCPUState;
+	
+	VSTR_D(reg, ArmReg_R12, offset);
+}
+
+void CCodeGeneratorARM::GetDoubleVar( EArmVfpReg dst_reg, const f64 * p_var )
+{
+	uint16_t offset = (u32)p_var - (u32)&gCPUState;
+	
+	VLDR_D(dst_reg, ArmReg_R12, offset);
+}
+
 //*****************************************************************************
 //
 //*****************************************************************************
@@ -510,7 +538,34 @@ void	CCodeGeneratorARM::FlushAllRegisters(CN64RegisterCacheARM& cache, bool inva
 		FlushRegister(cache, n64_reg, 1, invalidate);
 	}
 
-	//FlushAllFloatingPointRegisters(cache, invalidate);
+	FlushAllFloatingPointRegisters(cache, invalidate);
+}
+
+void	CCodeGeneratorARM::FlushAllFloatingPointRegisters( CN64RegisterCacheARM & cache, bool invalidate )
+{
+	
+	for( u32 i {0}; i < NUM_N64_FP_REGS; i++ )
+	{
+		EN64FloatReg	n64_reg = EN64FloatReg( i );
+		if( cache.IsFPDirty( n64_reg ) )
+		{
+			#ifdef DAEDALUS_ENABLE_ASSERTS
+			DAEDALUS_ASSERT( cache.IsFPValid( n64_reg ), "Register is dirty but not valid?" );
+			#endif
+			EArmVfpReg	arm_reg = EArmVfpReg( n64_reg );
+
+			SetFloatVar( &gCPUState.FPU[n64_reg]._f32, arm_reg );
+
+			cache.MarkFPAsDirty( n64_reg, false );
+		}
+
+		if( invalidate )
+		{
+			// Invalidate the register, so we pick up any values the function might have changed
+			cache.MarkFPAsValid( n64_reg, false );
+			cache.MarkFPAsSim( n64_reg, false );
+		}
+	}
 }
 
 void	CCodeGeneratorARM::RestoreAllRegisters(CN64RegisterCacheARM& current_cache, CN64RegisterCacheARM& new_cache)
@@ -531,7 +586,6 @@ void	CCodeGeneratorARM::RestoreAllRegisters(CN64RegisterCacheARM& current_cache,
 	}
 
 	// XXXX some fp regs are preserved across function calls?
-	/*
 	for (u32 i{ 0 }; i < NUM_N64_FP_REGS; ++i)
 	{
 		EN64FloatReg	n64_reg = EN64FloatReg(i);
@@ -542,7 +596,6 @@ void	CCodeGeneratorARM::RestoreAllRegisters(CN64RegisterCacheARM& current_cache,
 			GetFloatVar(arm_reg, &gCPUState.FPU[n64_reg]._f32);
 		}
 	}
-	*/
 }
 //
 
@@ -633,6 +686,67 @@ void CCodeGeneratorARM::UpdateRegister(EN64Reg n64_reg, EArmReg  arm_reg, bool o
 	}
 }
 
+EArmVfpReg	CCodeGeneratorARM::GetFloatRegisterAndLoad( EN64FloatReg n64_reg )
+{
+	EArmVfpReg	arm_reg = EArmVfpReg( n64_reg );	// 1:1 mapping
+	if( !mRegisterCache.IsFPValid( n64_reg ) )
+	{
+		GetFloatVar( arm_reg, &gCPUState.FPU[n64_reg]._f32 );
+		mRegisterCache.MarkFPAsValid( n64_reg, true );
+	}
+
+	mRegisterCache.MarkFPAsSim( n64_reg, false );
+
+	return arm_reg;
+}
+
+EArmVfpReg	CCodeGeneratorARM::GetDoubleRegisterAndLoad( EN64FloatReg n64_reg )
+{
+	#ifdef DAEDALUS_ENABLE_ASSERTS
+	DAEDALUS_ASSERT( n64_reg % 2 == 0, "n64_reg not a multiple of 2?" );
+	#endif
+	EArmVfpReg arm_reg = EArmVfpReg(n64_reg); // 1:1 mapping
+	if (!mRegisterCache.IsFPValid(n64_reg) && !mRegisterCache.IsFPValid(EN64FloatReg(n64_reg + 1)) )
+	{
+		GetDoubleVar(EArmVfpReg(arm_reg/2), (f64*)&gCPUState.FPU[n64_reg]._f32);
+		mRegisterCache.MarkFPAsValid( n64_reg, true );
+		mRegisterCache.MarkFPAsValid( EN64FloatReg(n64_reg+1), true );
+	}
+	else if (!mRegisterCache.IsFPValid(n64_reg))
+	{
+		GetFloatVar( arm_reg, &gCPUState.FPU[n64_reg]._f32 );
+		mRegisterCache.MarkFPAsValid( n64_reg, true );
+	}
+	else if (!mRegisterCache.IsFPValid(EN64FloatReg(n64_reg+1)))
+	{
+		GetFloatVar( EArmVfpReg(arm_reg+1), &gCPUState.FPU[n64_reg+1]._f32 );
+		mRegisterCache.MarkFPAsValid( EN64FloatReg(n64_reg+1), true );
+	}
+
+	mRegisterCache.MarkFPAsSim( n64_reg, false );
+
+	return EArmVfpReg(arm_reg/2); // ARM double precision instructions index by pairs (0-16), so divide the return register by 2
+}
+
+inline void CCodeGeneratorARM::UpdateFloatRegister( EN64FloatReg n64_reg )
+{
+	mRegisterCache.MarkFPAsDirty( n64_reg, true );
+	mRegisterCache.MarkFPAsValid( n64_reg, true );
+	mRegisterCache.MarkFPAsSim( n64_reg, false );
+}
+
+inline void CCodeGeneratorARM::UpdateDoubleRegister( EN64FloatReg n64_reg )
+{
+	#ifdef DAEDALUS_ENABLE_ASSERTS
+	DAEDALUS_ASSERT( n64_reg % 2 == 0, "n64_reg not a multiple of 2?" );
+	#endif
+	mRegisterCache.MarkFPAsDirty( n64_reg, true );
+	mRegisterCache.MarkFPAsValid( n64_reg, true );
+	mRegisterCache.MarkFPAsSim( n64_reg, false );
+	mRegisterCache.MarkFPAsDirty( EN64FloatReg(n64_reg+1), true );
+	mRegisterCache.MarkFPAsValid( EN64FloatReg(n64_reg+1), true );
+	mRegisterCache.MarkFPAsSim( EN64FloatReg(n64_reg+1), false );
+}
 //*****************************************************************************
 //
 //*****************************************************************************
@@ -1395,19 +1509,26 @@ bool CCodeGeneratorARM::GenerateLBU( EN64Reg rt, EN64Reg base, s16 offset )
 
 bool CCodeGeneratorARM::GenerateLWC1( u32 ft, EN64Reg base, s16 offset )
 {
+	EArmVfpReg arm_ft = EArmVfpReg(ft);
 	GenerateLoad( ArmReg_R0, base, offset, 0, 32, false, (void*)Read32Bits );
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	
+	VMOV_S(arm_ft, ArmReg_R0);
+	
+	UpdateFloatRegister(EN64FloatReg(ft));
 	return true;
 }
 
 bool CCodeGeneratorARM::GenerateLDC1( u32 ft, EN64Reg base, s16 offset )
 {
+	EArmVfpReg arm_ft = EArmVfpReg(ft+1);
 	GenerateLoad( ArmReg_R0, base, offset, 0, 32, false, (void*)Read32Bits );
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft + 1]._u32));
+	VMOV_S(arm_ft, ArmReg_R0);
+	UpdateFloatRegister(EN64FloatReg(ft+1));
 
+	arm_ft = EArmVfpReg(ft);
 	GenerateLoad( ArmReg_R0, base, offset + 4, 0, 32, false, (void*)Read32Bits );
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-
+	VMOV_S(arm_ft, ArmReg_R0);
+	UpdateFloatRegister(EN64FloatReg(ft));
 	return true;
 }
 
@@ -1570,17 +1691,20 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 // Store Word From Copro 1
 bool CCodeGeneratorARM::GenerateSWC1( u32 ft, EN64Reg base, s16 offset )
 {
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
+	VMOV_S(ArmReg_R1, arm_ft);
 	GenerateStore( ArmReg_R1, base, offset, 0, 32, (void*)Write32Bits );
 	return true;
 }
 
 bool CCodeGeneratorARM::GenerateSDC1( u32 ft, EN64Reg base, s16 offset )
 {
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft + 1]._u32));
+	EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
+	
+	VMOV_H(ArmReg_R1, arm_ft);
 	GenerateStore( ArmReg_R1, base, offset, 0, 32, (void*)Write32Bits );
 
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+	VMOV_L(ArmReg_R1, arm_ft);
 	GenerateStore( ArmReg_R1, base, offset + 4, 0, 32, (void*)Write32Bits );
 	return true;
 }
@@ -2345,50 +2469,54 @@ void CCodeGeneratorARM::GenerateBGTZ( EN64Reg rs, const SBranchDetails * p_branc
 
 void CCodeGeneratorARM::GenerateADD_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VADD(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
-	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VADD(arm_fd, arm_fs, arm_ft);
+	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateSUB_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VSUB(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
-	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VSUB(arm_fd, arm_fs, arm_ft);
+	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateMUL_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VMUL(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
-	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VMUL(arm_fd, arm_fs, arm_ft);
+	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateDIV_S( u32 fd, u32 fs, u32 ft )
 {
-	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	VDIV(ArmVfpReg_S4, ArmVfpReg_S0, ArmVfpReg_S2);
-	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VDIV(arm_fd, arm_fs, arm_ft);
+	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateSQRT_S( u32 fd, u32 fs )
 {
-	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-
-	VSQRT(ArmVfpReg_S4, ArmVfpReg_S0);
-	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VSQRT(arm_fd, arm_fs);
+	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateTRUNC_W( u32 fd, u32 fs )
 {
-	VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._f32));
-
-	VCVT_S32_F32(ArmVfpReg_S4, ArmVfpReg_S0);
-	VSTR(ArmVfpReg_S4, ArmReg_R12, offsetof(SCPUState, FPU[fd]._s32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VCVT_S32_F32(arm_fd, arm_fs);
+	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
@@ -2404,14 +2532,14 @@ void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
 	}
 	else
 	{
-		VLDR(ArmVfpReg_S0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-		VLDR(ArmVfpReg_S2, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
+		EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+		EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
 
 		MOV32(ArmReg_R0, ~FPCSR_C);
 		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
 		AND(ArmReg_R0, ArmReg_R1, ArmReg_R0);
 
-		VCMP(ArmVfpReg_S0, ArmVfpReg_S2);
+		VCMP(arm_fs, arm_ft);
 
 		MOV_IMM(ArmReg_R1, 0x02, 0x5);
 		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R1, cond);
@@ -2422,89 +2550,66 @@ void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
 
 void CCodeGeneratorARM::GenerateADD_D( u32 fd, u32 fs, u32 ft )
 {
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fs + 1]._u32));
-	VMOV(ArmVfpReg_S0, ArmReg_R0, ArmReg_R1);
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
 
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft + 1]._u32));
-	VMOV(ArmVfpReg_S2, ArmReg_R0, ArmReg_R1);
+	VADD_D(arm_fd, arm_fs, arm_ft);
 
-	VADD_D(ArmVfpReg_S0, ArmVfpReg_S0, ArmVfpReg_S2);
-
-	VMOV(ArmReg_R0, ArmReg_R1, ArmVfpReg_S0);
-
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
-	STR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fd + 1]._u32));
+	UpdateDoubleRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateSUB_D( u32 fd, u32 fs, u32 ft )
 {
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fs + 1]._u32));
-	VMOV(ArmVfpReg_S0, ArmReg_R0, ArmReg_R1);
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
 
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft + 1]._u32));
-	VMOV(ArmVfpReg_S2, ArmReg_R0, ArmReg_R1);
+	VSUB_D(arm_fd, arm_fs, arm_ft);
 
-	VSUB_D(ArmVfpReg_S0, ArmVfpReg_S0, ArmVfpReg_S2);
-
-	VMOV(ArmReg_R0, ArmReg_R1, ArmVfpReg_S0);
-
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
-	STR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fd + 1]._u32));
+	UpdateDoubleRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateDIV_D( u32 fd, u32 fs, u32 ft )
 {
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fs + 1]._u32));
-	VMOV(ArmVfpReg_S0, ArmReg_R0, ArmReg_R1);
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
 
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft + 1]._u32));
-	VMOV(ArmVfpReg_S2, ArmReg_R0, ArmReg_R1);
+	VDIV_D(arm_fd, arm_fs, arm_ft);
 
-	VDIV_D(ArmVfpReg_S0, ArmVfpReg_S0, ArmVfpReg_S2);
-
-	VMOV(ArmReg_R0, ArmReg_R1, ArmVfpReg_S0);
-
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
-	STR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fd + 1]._u32));
+	UpdateDoubleRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateMUL_D( u32 fd, u32 fs, u32 ft )
 {
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fs]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fs + 1]._u32));
-	VMOV(ArmVfpReg_S0, ArmReg_R0, ArmReg_R1);
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
 
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[ft]._u32));
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[ft + 1]._u32));
-	VMOV(ArmVfpReg_S2, ArmReg_R0, ArmReg_R1);
+	VMUL_D(arm_fd, arm_fs, arm_ft);
 
-	VMUL_D(ArmVfpReg_S0, ArmVfpReg_S0, ArmVfpReg_S2);
-
-	VMOV(ArmReg_R0, ArmReg_R1, ArmVfpReg_S0);
-
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPU[fd]._u32));
-	STR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPU[fd + 1]._u32));
+	UpdateDoubleRegister(EN64FloatReg(fd));
 }
 
 void CCodeGeneratorARM::GenerateMFC1( EN64Reg rt, u32 fs )
 {
 	EArmReg regt = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	LDR(regt, ArmReg_R12, offsetof(SCPUState, FPU[fs]._s32));
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	VMOV_S(regt, arm_fs);
 
 	UpdateRegister(rt, regt, URO_HI_SIGN_EXTEND);
 }
 
 void CCodeGeneratorARM::GenerateMTC1( u32 fs, EN64Reg rt )
 {
-
 	EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R0);
-	STR(regt, ArmReg_R12, offsetof(SCPUState, FPU[fs]._s32));
+	
+	EArmVfpReg arm_fs = EArmVfpReg(fs);
+	
+	VMOV_S(arm_fs, regt);
+	
+	UpdateFloatRegister(EN64FloatReg(fs));
 }
 
 void CCodeGeneratorARM::GenerateCFC1( EN64Reg rt, u32 fs )

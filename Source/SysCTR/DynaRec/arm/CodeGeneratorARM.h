@@ -67,7 +67,11 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				void                GetVar(EArmReg arm_reg, const u32* p_var);
 				void				SetVar( const u32 * p_var, u32 value );
 				void				SetVar(const u32* p_var, EArmReg reg);
-
+				void				SetFloatVar(const f32* p_var, EArmVfpReg reg);
+				void				GetFloatVar( EArmVfpReg dst_reg, const f32 * p_var );
+				void				SetDoubleVar(const f64* p_var, EArmVfpReg reg);
+				void				GetDoubleVar( EArmVfpReg dst_reg, const f64 * p_var );
+				
 				EArmReg				GetRegisterNoLoad( EN64Reg n64_reg, u32 lo_hi_idx, EArmReg scratch_reg );
 				EArmReg				GetRegisterNoLoadLo( EN64Reg n64_reg, EArmReg scratch_reg )		{ return GetRegisterNoLoad( n64_reg, 0, scratch_reg ); }
 				EArmReg				GetRegisterNoLoadHi( EN64Reg n64_reg, EArmReg scratch_reg )		{ return GetRegisterNoLoad( n64_reg, 1, scratch_reg ); }
@@ -85,8 +89,14 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				void				PrepareCachedRegisterHi(EN64Reg n64_reg) { PrepareCachedRegister(n64_reg, 1); }
 				void                FlushRegister(CN64RegisterCacheARM& cache, EN64Reg n64_reg, u32 lo_hi_idx, bool invalidate);
 				void                FlushAllRegisters(CN64RegisterCacheARM& cache, bool invalidate);
+				void                FlushAllFloatingPointRegisters( CN64RegisterCacheARM & cache, bool invalidate );
 				void                RestoreAllRegisters(CN64RegisterCacheARM& current_cache, CN64RegisterCacheARM& new_cache);
 				void                UpdateRegister(EN64Reg n64_reg, EArmReg  arm_reg, bool options);
+				EArmVfpReg          GetFloatRegisterAndLoad( EN64FloatReg n64_reg );
+				EArmVfpReg          GetDoubleRegisterAndLoad( EN64FloatReg n64_reg );
+				void                UpdateFloatRegister( EN64FloatReg n64_reg );
+				void                UpdateDoubleRegister( EN64FloatReg n64_reg );
+				
 				const CN64RegisterCacheARM& GetRegisterCacheFromHandle(RegisterSnapshotHandle snapshot) const;
 
 

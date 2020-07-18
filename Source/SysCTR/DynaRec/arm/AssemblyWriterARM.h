@@ -126,6 +126,12 @@ class CAssemblyWriterARM
 		void				VCMP (EArmVfpReg Sd, EArmVfpReg Sm);
 		void				VCVT_S32_F32(EArmVfpReg Sd, EArmVfpReg Sm);
 
+		void				VMOV_S(EArmReg Rt, EArmVfpReg Dm);
+		void				VMOV_S(EArmVfpReg Dm, EArmReg Rt);
+		void				VMOV_L(EArmReg Rt, EArmVfpReg Dm);
+		void				VMOV_L(EArmVfpReg Dm, EArmReg Rt);
+		void				VMOV_H(EArmReg Rt, EArmVfpReg Dm);
+		void				VMOV_H(EArmVfpReg Dm, EArmReg Rt);
 		void				VMOV (EArmVfpReg dm, EArmReg rt, EArmReg rt2);
 		void				VMOV (EArmReg rt, EArmReg rt2, EArmVfpReg dm);
 
