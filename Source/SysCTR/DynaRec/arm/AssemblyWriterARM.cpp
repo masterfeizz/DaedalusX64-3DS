@@ -116,9 +116,14 @@ void	CAssemblyWriterARM::XOR_IMM(EArmReg rd, EArmReg rn, u8 imm)
 	EmitDWORD(0xe2200000 | (rd << 12) | (rn << 16) | imm);
 }
 
-void	CAssemblyWriterARM::B(u16 offset, EArmCond cond)
+void	CAssemblyWriterARM::B(s32 offset, EArmCond cond)
 {
 	EmitDWORD(0x0a000000 | (cond << 28) | (offset >> 2));
+}
+
+void	CAssemblyWriterARM::BL(s32 offset, EArmCond cond)
+{
+	EmitDWORD(0x0b000000 | (cond << 28) | (offset >> 2));
 }
 
 void	CAssemblyWriterARM::BX(EArmReg rm, EArmCond cond)
@@ -430,14 +435,12 @@ CJumpLocation CAssemblyWriterARM::BX_IMM( CCodeLabel target, EArmCond cond )
 	#ifdef DYNAREC_ARMV7
 	MOVW(ArmReg_R4, address);
 	MOVT(ArmReg_R4, address >> 16);
-	#else
-	MOV_IMM(ArmReg_R4, address);
-	ADD_IMM(ArmReg_R4, ArmReg_R4, address >> 8, 0xc);
-	ADD_IMM(ArmReg_R4, ArmReg_R4, address >> 16, 0x8);
-	ADD_IMM(ArmReg_R4, ArmReg_R4, address >> 24, 0x4);
-	#endif
-
 	BX(ArmReg_R4, cond);
+	#else
+	s32 offset = (jump_location.GetOffset(target) - 8);
+	B(offset & 0x3FFFFFF, cond);
+	#endif
+	if (cond == AL) InsertLiteralPool(false);
 
 	return jump_location;
 }

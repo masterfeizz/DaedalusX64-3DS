@@ -75,7 +75,8 @@ class CAssemblyWriterARM
 		void				CMP    (EArmReg rn, EArmReg rm);
 		void				CMP_IMM(EArmReg rn, u8 imm);
 
-		void				B  (u16 offset, EArmCond cond = AL);
+		void				B  (s32 offset, EArmCond cond = AL);
+		void				BL (s32 offset, EArmCond cond = AL);
 		void				BX (EArmReg rm, EArmCond cond = AL);
 		void				BLX(EArmReg rm, EArmCond cond = AL);
 		

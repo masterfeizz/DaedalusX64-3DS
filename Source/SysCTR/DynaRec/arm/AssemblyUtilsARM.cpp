@@ -37,10 +37,10 @@ bool	PatchJumpLong( CJumpLocation jump, CCodeLabel target )
 
 	u32 address = target.GetTargetU32();
 
-	p_jump_addr[0] = (p_jump_addr[0] & ~0xFF) | (address & 0xFF);
-	p_jump_addr[1] = (p_jump_addr[1] & ~0xFF) | ((address >> 8) & 0xFF);
-	p_jump_addr[2] = (p_jump_addr[2] & ~0xFF) | ((address >> 16) & 0xFF);
-	p_jump_addr[3] = (p_jump_addr[3] & ~0xFF) | ((address >> 24) & 0xFF);
+	s32 offset = jump.GetOffset(target) - 8;
+	
+	offset >>= 2;
+	p_jump_addr[0] = (p_jump_addr[0] &0xFF000000)| (offset & 0xFFFFFF);
 	
 	// All jumps are 32 bit offsets, and so always succeed.
 	return true;
