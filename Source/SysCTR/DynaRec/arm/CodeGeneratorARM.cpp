@@ -64,6 +64,11 @@ static const EArmReg gRegistersToUseForCaching[] = {
 // XX this optimisation works very well on the PSP, option to disable it was removed
 static const bool		gDynarecStackOptimisation = true;
 
+// function stubs from assembly
+extern "C" { void _DirectExitCheckNoDelay( u32 instructions_executed, u32 exit_pc ); }
+extern "C" { void _DirectExitCheckDelay( u32 instructions_executed, u32 exit_pc, u32 target_pc ); }
+extern "C" { void _IndirectExitCheck( u32 instructions_executed, CIndirectExitMap* map, u32 exit_pc ); }
+
 //Helper functions used for slow loads
 s32 Read8Bits_Signed ( u32 address ) { return (s8) Read8Bits(address); };
 s32 Read16Bits_Signed( u32 address ) { return (s16)Read16Bits(address); };
@@ -824,33 +829,25 @@ CJumpLocation CCodeGeneratorARM::GenerateExitCode( u32 exit_address, u32 jump_ad
 	}
 #endif
 	FlushAllRegisters(mRegisterCache, true);
+	
 	MOV32(ArmReg_R0, num_instructions);
-
-	//Call CPU_UpdateCounter
-	CALL(CCodeLabel( (void*)CPU_UpdateCounter ));
-
-	// This jump may be NULL, in which case we patch it below
-	// This gets patched with a jump to the next fragment if the target is later found
-	CJumpLocation jump_to_next_fragment( GenerateBranchIfNotSet( const_cast< u32 * >( &gCPUState.StuffToDo ), next_fragment ) );
-
-	// If the flag was set, we need in initialise the pc/delay to exit with
-	CCodeLabel interpret_next_fragment( GetAssemblyBuffer()->GetLabel() );
-
-	u8		exit_delay;
-
-	if( jump_address != 0 )
+	MOV32(ArmReg_R1, exit_address);
+	if (jump_address != 0)
 	{
-		SetVar( &gCPUState.TargetPC, jump_address );
-		exit_delay = EXEC_DELAY;
+		MOV32(ArmReg_R2, jump_address);
+		MOV32(ArmReg_R3, (u32)&_DirectExitCheckDelay);
 	}
 	else
 	{
-		exit_delay = NO_DELAY;
+		MOV32(ArmReg_R3, (u32)&_DirectExitCheckNoDelay);
 	}
-
-	SetVar( &gCPUState.Delay, exit_delay );
-	SetVar( &gCPUState.CurrentPC, exit_address );
-
+	
+	BLX(ArmReg_R3);
+	
+// If the flag was set, we need in initialise the pc/delay to exit with
+	CJumpLocation jump_to_next_fragment = BX_IMM( CCodeLabel { nullptr } );
+	
+	CCodeLabel interpret_next_fragment( GetAssemblyBuffer()->GetLabel() );
 	// No need to call CPU_SetPC(), as this is handled by CFragment when we exit
 	RET();
 
@@ -869,22 +866,15 @@ CJumpLocation CCodeGeneratorARM::GenerateExitCode( u32 exit_address, u32 jump_ad
 void CCodeGeneratorARM::GenerateEretExitCode( u32 num_instructions, CIndirectExitMap * p_map )
 {
 	FlushAllRegisters(mRegisterCache, true);
+	
 	MOV32(ArmReg_R0, num_instructions);
-
-	//Call CPU_UpdateCounter
-	CALL(CCodeLabel( (void*)CPU_UpdateCounter ));
-
-	// We always exit to the interpreter, regardless of the state of gCPUState.StuffToDo
-
+	MOV32(ArmReg_R1, reinterpret_cast<u32>(p_map));
+	LDR(ArmReg_R2, ArmReg_R12, offsetof(SCPUState, CurrentPC));
 	// Eret is a bit bodged so we exit at PC + 4
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CurrentPC));
-	ADD_IMM(ArmReg_R0, ArmReg_R0, 4);
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CurrentPC));
-
-	SetVar( &gCPUState.Delay, NO_DELAY );
-
-	// No need to call CPU_SetPC(), as this is handled by CFragment when we exit
-	RET();
+	ADD_IMM(ArmReg_R2, ArmReg_R2, 4);
+	
+	MOV32(ArmReg_R4, (u32)&_IndirectExitCheck);
+	BLX(ArmReg_R4);
 }
 
 //*****************************************************************************
@@ -893,37 +883,13 @@ void CCodeGeneratorARM::GenerateEretExitCode( u32 num_instructions, CIndirectExi
 void CCodeGeneratorARM::GenerateIndirectExitCode( u32 num_instructions, CIndirectExitMap * p_map )
 {
 	FlushAllRegisters(mRegisterCache, true);
+
 	MOV32(ArmReg_R0, num_instructions);
-
-	//Call CPU_UpdateCounter
-	CALL(CCodeLabel( (void*)CPU_UpdateCounter ));
-
-	CCodeLabel		no_target( NULL );
-	CJumpLocation	jump_to_next_fragment( GenerateBranchIfNotSet( const_cast< u32 * >( &gCPUState.StuffToDo ), no_target ) );
-
-	CCodeLabel		exit_dynarec( GetAssemblyBuffer()->GetLabel() );
-
-	// New return address is in gCPUState.TargetPC
-	LDR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, TargetPC));
-	STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, CurrentPC));
-	SetVar( &gCPUState.Delay, NO_DELAY );
-
-	// No need to call CPU_SetPC(), as this is handled by CFragment when we exit
-	RET();
-
-	// gCPUState.StuffToDo == 0, try to jump to the indirect target
-	PatchJumpLong( jump_to_next_fragment, GetAssemblyBuffer()->GetLabel() );
-
-	MOV32( ArmReg_R0, reinterpret_cast< u32 >( p_map ) );
-	LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, TargetPC));
-
-	CALL(CCodeLabel( (void*)IndirectExitMap_Lookup ));
-
-	// If the target was not found, exit
-	TST( ArmReg_R0, ArmReg_R0 );
-	BX_IMM( exit_dynarec, EQ );
-
-	BX( ArmReg_R0 );
+	MOV32(ArmReg_R1, reinterpret_cast<u32>(p_map));
+	LDR(ArmReg_R2, ArmReg_R12, offsetof(SCPUState, TargetPC));
+	
+	MOV32(ArmReg_R4, (u32)&_IndirectExitCheck);
+	BLX(ArmReg_R4);
 }
 
 //*****************************************************************************
