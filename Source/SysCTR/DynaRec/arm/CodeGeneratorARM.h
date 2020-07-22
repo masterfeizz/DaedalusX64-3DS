@@ -172,6 +172,7 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				void	GenerateJALR( EN64Reg rs, EN64Reg rd, u32 address, const SBranchDetails * p_branch, CJumpLocation * p_branch_jump );
 
 				//Special Op
+				void 	GenerateMFC0( EN64Reg rt, u32 fs );
 				void	GenerateMFC1( EN64Reg rt, u32 fs );
 				void	GenerateMTC1( u32 fs, EN64Reg rt );
 				void	GenerateCFC1( EN64Reg rt, u32 fs );
@@ -220,11 +221,22 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				void	GenerateMUL_S( u32 fd, u32 fs, u32 ft );
 				void	GenerateDIV_S( u32 fd, u32 fs, u32 ft );
 				void	GenerateSQRT_S( u32 fd, u32 fs );
-				void	GenerateTRUNC_W( u32 fd, u32 fs );
-				void	GenerateCMP_S( u32 fs, u32 ft, EArmCond cond );
+				void	GenerateABS_S( u32 fd, u32 fs );
+				void	GenerateMOV_S( u32 fd, u32 fs );
+				void	GenerateNEG_S( u32 fd, u32 fs );
+				void	GenerateTRUNC_W_S( u32 fd, u32 fs );
+				void	GenerateCVT_D_S( u32 fd, u32 fs );
+				void	GenerateCMP_S( u32 fs, u32 ft, EArmCond cond, u8 E );
 
 				void	GenerateADD_D( u32 fd, u32 fs, u32 ft );
 				void	GenerateSUB_D( u32 fd, u32 fs, u32 ft );
 				void	GenerateMUL_D( u32 fd, u32 fs, u32 ft );
 				void	GenerateDIV_D( u32 fd, u32 fs, u32 ft );
+				void	GenerateSQRT_D( u32 fd, u32 fs );
+				void	GenerateABS_D( u32 fd, u32 fs );
+				void	GenerateMOV_D( u32 fd, u32 fs );
+				void	GenerateNEG_D( u32 fd, u32 fs );
+				void	GenerateTRUNC_W_D( u32 fd, u32 fs );
+				void	GenerateCVT_S_D( u32 fd, u32 fs );
+				void	GenerateCMP_D( u32 fs, u32 ft, EArmCond cond, u8 E );
 };

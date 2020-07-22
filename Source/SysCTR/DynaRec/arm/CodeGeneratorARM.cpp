@@ -967,7 +967,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchAlways( CCodeLabel target )
 //*****************************************************************************
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfSet( const u32 * p_var, CCodeLabel target )
 {
-	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	s32 diff = (u8*)p_var - (u8*)&gCPUState;
 	
 	// if this is in range of CPUState, just load it
 	if (diff <= 0xFFF && diff >= -0xFFF)
@@ -990,7 +990,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchIfSet( const u32 * p_var, CCodeLa
 //*****************************************************************************
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfNotSet( const u32 * p_var, CCodeLabel target )
 {
-	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	s32 diff = (u8*)p_var - (u8*)&gCPUState;
 	
 	// if this is in range of CPUState, just load it
 	if (diff <= 0xFFF && diff >= -0xFFF)
@@ -1012,7 +1012,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchIfNotSet( const u32 * p_var, CCod
 //*****************************************************************************
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfEqual( const u32 * p_var, u32 value, CCodeLabel target )
 {
-	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	s32 diff = (u8*)p_var - (u8*)&gCPUState;
 	
 	// if this is in range of CPUState, just load it
 	if (diff <= 0xFFF && diff >= -0xFFF)
@@ -1033,7 +1033,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchIfEqual( const u32 * p_var, u32 v
 
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfNotEqual( const u32 * p_var, u32 value, CCodeLabel target )
 {
-	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	s32 diff = (u8*)p_var - (u8*)&gCPUState;
 	
 	// if this is in range of CPUState, just load it
 	if (diff <= 0xFFF && diff >= -0xFFF)
@@ -1194,7 +1194,14 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 				default: break;
 			}
 			break;
-
+		case OP_COPRO0:
+			switch( op_code.cop0_op )
+			{
+			case Cop0Op_MFC0:	GenerateMFC0( rt, op_code.fs ); handled = true; break;
+			default:
+				break;
+			}
+		break;
 		case OP_COPRO1:
 			switch( op_code.cop1_op )
 			{
@@ -1211,6 +1218,32 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 						case Cop1OpFunc_SUB:	GenerateSUB_D( op_code.fd, op_code.fs, op_code.ft ); handled = true; break;
 						case Cop1OpFunc_MUL:	GenerateMUL_D( op_code.fd, op_code.fs, op_code.ft ); handled = true; break;
 						case Cop1OpFunc_DIV:	GenerateDIV_D( op_code.fd, op_code.fs, op_code.ft ); handled = true; break;
+						
+						case Cop1OpFunc_SQRT:		GenerateSQRT_D( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_ABS:		GenerateABS_D( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_MOV:		GenerateMOV_D( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_NEG:		GenerateNEG_D( op_code.fd, op_code.fs ); handled = true; break;
+						
+						case Cop1OpFunc_TRUNC_W:	GenerateTRUNC_W_D( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_CVT_S:		GenerateCVT_S_D( op_code.fd, op_code.fs ); handled = true; break;
+						
+						case Cop1OpFunc_CMP_F:		GenerateCMP_D( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_UN:		GenerateCMP_D( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_EQ:		GenerateCMP_D( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_UEQ:	GenerateCMP_D( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_OLT:	GenerateCMP_D( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_ULT:	GenerateCMP_D( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_OLE:	GenerateCMP_D( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_ULE:	GenerateCMP_D( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
+
+						case Cop1OpFunc_CMP_SF:		GenerateCMP_D( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGLE:	GenerateCMP_D( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_SEQ:	GenerateCMP_D( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGL:	GenerateCMP_D( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_LT:		GenerateCMP_D( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGE:	GenerateCMP_D( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_LE:		GenerateCMP_D( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGT:	GenerateCMP_D( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
 					}
 					break;
 
@@ -1222,24 +1255,30 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 						case Cop1OpFunc_MUL:	GenerateMUL_S( op_code.fd, op_code.fs, op_code.ft ); handled = true; break;
 						case Cop1OpFunc_DIV:	GenerateDIV_S( op_code.fd, op_code.fs, op_code.ft ); handled = true; break;
 						case Cop1OpFunc_SQRT:	GenerateSQRT_S( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_ABS:		GenerateABS_S( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_MOV:		GenerateMOV_S( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_NEG:		GenerateNEG_S( op_code.fd, op_code.fs ); handled = true; break;
+						
+						case Cop1OpFunc_TRUNC_W:	GenerateTRUNC_W_S( op_code.fd, op_code.fs ); handled = true; break;
+						case Cop1OpFunc_CVT_D:		GenerateCVT_D_S( op_code.fd, op_code.fs ); handled = true; break;
+						
+						case Cop1OpFunc_CMP_F:		GenerateCMP_S( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_UN:		GenerateCMP_S( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_EQ:		GenerateCMP_S( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_UEQ:	GenerateCMP_S( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_OLT:	GenerateCMP_S( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_ULT:	GenerateCMP_S( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_OLE:	GenerateCMP_S( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_ULE:	GenerateCMP_S( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
 
-						case Cop1OpFunc_TRUNC_W:	GenerateTRUNC_W( op_code.fd, op_code.fs ); handled = true; break;
-
-						case Cop1OpFunc_CMP_F:		GenerateCMP_S( op_code.fs, op_code.ft, NV ); handled = true; break;
-						case Cop1OpFunc_CMP_UN:		GenerateCMP_S( op_code.fs, op_code.ft, VS ); handled = true; break;
-						case Cop1OpFunc_CMP_EQ:		GenerateCMP_S( op_code.fs, op_code.ft, EQ ); handled = true; break;
-						//case Cop1OpFunc_CMP_UEQ:	GenerateCMP_S( op_code.fs, op_code.ft,  ); handled = true; break;
-						case Cop1OpFunc_CMP_ULT:	GenerateCMP_S( op_code.fs, op_code.ft, LT ); handled = true; break;
-						case Cop1OpFunc_CMP_OLE:	GenerateCMP_S( op_code.fs, op_code.ft, LS ); handled = true; break;
-						case Cop1OpFunc_CMP_ULE:	GenerateCMP_S( op_code.fs, op_code.ft, LE ); handled = true; break;
-
-						case Cop1OpFunc_CMP_SF:		GenerateCMP_S( op_code.fs, op_code.ft, NV ); handled = true; break;
-						case Cop1OpFunc_CMP_NGLE:	GenerateCMP_S( op_code.fs, op_code.ft, NV ); handled = true; break;
-						case Cop1OpFunc_CMP_SEQ:	GenerateCMP_S( op_code.fs, op_code.ft, EQ ); handled = true; break;
-						case Cop1OpFunc_CMP_NGL:	GenerateCMP_S( op_code.fs, op_code.ft, EQ ); handled = true; break;
-						case Cop1OpFunc_CMP_LT:		GenerateCMP_S( op_code.fs, op_code.ft, CC ); handled = true; break;
-						case Cop1OpFunc_CMP_NGE:	GenerateCMP_S( op_code.fs, op_code.ft, CC ); handled = true; break;
-						case Cop1OpFunc_CMP_LE:		GenerateCMP_S( op_code.fs, op_code.ft, LS ); handled = true; break;
+						case Cop1OpFunc_CMP_SF:		GenerateCMP_S( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGLE:	GenerateCMP_S( op_code.fs, op_code.ft, NV, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_SEQ:	GenerateCMP_S( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGL:	GenerateCMP_S( op_code.fs, op_code.ft, EQ, 0 ); handled = true; break;
+						case Cop1OpFunc_CMP_LT:		GenerateCMP_S( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGE:	GenerateCMP_S( op_code.fs, op_code.ft, MI, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_LE:		GenerateCMP_S( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
+						case Cop1OpFunc_CMP_NGT:	GenerateCMP_S( op_code.fs, op_code.ft, LS, 1 ); handled = true; break;
 					}
 					break;
 
@@ -1405,8 +1444,7 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 		EArmReg load_reg = reg_base;
 		if (offset != 0)
 		{
-			MOV32(ArmReg_R1, offset);
-			ADD(ArmReg_R1, reg_base, ArmReg_R1);
+			ADD_IMM(ArmReg_R1, reg_base, offset, ArmReg_R1);
 			load_reg = ArmReg_R1;
 		}
 		
@@ -1622,40 +1660,8 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 
 		if (offset != 0)
 		{
-			u32 uoffset = abs(offset);
-			if (uoffset)
-			{
-				if (offset > 0)
-				{
-					if (uoffset > 0xFF)
-					{
-						ADD_IMM(ArmReg_R0, store_reg, uoffset >> 8, 0xC);
-						uoffset = uoffset & 0xFF;
-						store_reg = ArmReg_R0;
-					}
-
-					if (uoffset)
-					{
-						ADD_IMM(ArmReg_R0, store_reg, uoffset, 0);
-						store_reg = ArmReg_R0;
-					}
-				}
-				else
-				{
-					if (uoffset > 0xFF)
-					{
-						SUB_IMM(ArmReg_R0, store_reg, uoffset >> 8, 0xC);
-						uoffset = uoffset & 0xFF;
-						store_reg = ArmReg_R0;
-					}
-					
-					if (uoffset)
-					{
-						SUB_IMM(ArmReg_R0, store_reg, uoffset, 0);
-						store_reg = ArmReg_R0;
-					}
-				}
-			}
+			ADD_IMM(ArmReg_R0, store_reg, offset, ArmReg_R2);
+			store_reg = ArmReg_R0;
 		}
 		
 		if (twiddle != 0)
@@ -2597,7 +2603,31 @@ void CCodeGeneratorARM::GenerateSQRT_S( u32 fd, u32 fs )
 	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
-void CCodeGeneratorARM::GenerateTRUNC_W( u32 fd, u32 fs )
+void CCodeGeneratorARM::GenerateABS_S( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VABS(arm_fd, arm_fs);
+	UpdateFloatRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateMOV_S( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VMOV_S(arm_fd, arm_fs);
+	UpdateFloatRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateNEG_S( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+	VNEG(arm_fd, arm_fs);
+	UpdateFloatRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateTRUNC_W_S( u32 fd, u32 fs )
 {
 	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
 	EArmVfpReg arm_fd = EArmVfpReg(fd);
@@ -2605,7 +2635,15 @@ void CCodeGeneratorARM::GenerateTRUNC_W( u32 fd, u32 fs )
 	UpdateFloatRegister(EN64FloatReg(fd));
 }
 
-void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
+void CCodeGeneratorARM::GenerateCVT_D_S( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
+	VCVT_F64_F32(arm_fd, arm_fs);
+	UpdateDoubleRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond, u8 E )
 {
 	if(cond == NV)
 	{
@@ -2621,11 +2659,10 @@ void CCodeGeneratorARM::GenerateCMP_S( u32 fs, u32 ft, EArmCond cond )
 		EArmVfpReg arm_fs = GetFloatRegisterAndLoad(EN64FloatReg(fs));
 		EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
 
-		MOV32(ArmReg_R0, ~FPCSR_C);
 		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
-		AND(ArmReg_R0, ArmReg_R1, ArmReg_R0);
+		AND_IMM(ArmReg_R0, ArmReg_R1, ~FPCSR_C, ArmReg_R0);
 
-		VCMP(arm_fs, arm_ft);
+		VCMP(arm_fs, arm_ft, E);
 
 		MOV_IMM(ArmReg_R1, 0x02, 0x5);
 		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R1, cond);
@@ -2676,6 +2713,105 @@ void CCodeGeneratorARM::GenerateMUL_D( u32 fd, u32 fs, u32 ft )
 	VMUL_D(arm_fd, arm_fs, arm_ft);
 
 	UpdateDoubleRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateSQRT_D( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
+
+	VSQRT_D(arm_fd, arm_fs);
+
+	UpdateDoubleRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateABS_D( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
+
+	VABS_D(arm_fd, arm_fs);
+
+	UpdateDoubleRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateMOV_D( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
+
+	VMOV(arm_fd, arm_fs);
+
+	UpdateDoubleRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateNEG_D( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd/2);
+
+	VNEG_D(arm_fd, arm_fs);
+
+	UpdateDoubleRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateTRUNC_W_D( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+
+	VCVT_S32_F64(arm_fd, arm_fs);
+
+	UpdateFloatRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateCVT_S_D( u32 fd, u32 fs )
+{
+	EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+	EArmVfpReg arm_fd = EArmVfpReg(fd);
+
+	VCVT_F32_F64(arm_fd, arm_fs);
+
+	UpdateFloatRegister(EN64FloatReg(fd));
+}
+
+void CCodeGeneratorARM::GenerateCMP_D( u32 fs, u32 ft, EArmCond cond, u8 E )
+{
+	if( cond == NV )
+	{
+		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
+		AND_IMM(ArmReg_R0, ArmReg_R1, ~FPCSR_C, ArmReg_R0);
+		STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
+	}
+	else
+	{
+		EArmVfpReg arm_fs = GetDoubleRegisterAndLoad(EN64FloatReg(fs));
+		EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
+
+		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
+
+		LDR(ArmReg_R1, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
+		AND_IMM(ArmReg_R0, ArmReg_R1, ~FPCSR_C, ArmReg_R0);
+
+		VCMP_D(arm_fs, arm_ft, E);
+
+		MOV_IMM(ArmReg_R1, 0x02, 0x5);
+		ADD(ArmReg_R0, ArmReg_R0, ArmReg_R1, cond);
+
+		STR(ArmReg_R0, ArmReg_R12, offsetof(SCPUState, FPUControl[31]._u32));
+	}
+}
+
+inline void	CCodeGeneratorARM::GenerateMFC0( EN64Reg rt, u32 fs )
+{
+	#ifdef DAEDALUS_ENABLE_ASSERTS
+	// Never seen this to happen, no reason to bother to handle it
+	DAEDALUS_ASSERT( fs != C0_RAND, "Reading MFC0 random register is unhandled");
+	#endif
+	EArmReg reg_dst( GetRegisterNoLoadLo( rt, ArmReg_R0 ) );
+
+	GetVar( reg_dst, &gCPUState.CPUControl[ fs ]._u32 );
+	UpdateRegister( rt, reg_dst, URO_HI_SIGN_EXTEND );
 }
 
 void CCodeGeneratorARM::GenerateMFC1( EN64Reg rt, u32 fs )

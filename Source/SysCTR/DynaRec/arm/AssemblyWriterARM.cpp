@@ -300,7 +300,7 @@ void	CAssemblyWriterARM::BIC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
 	}
 	else if (encOp2Imm(~imm, &enc))
 	{
-		AND_IMM(rd, rn, imm, temp);
+		AND_IMM(rd, rn, ~imm, temp);
 	}
 	else
 	{
@@ -583,17 +583,32 @@ void	CAssemblyWriterARM::VSQRT(EArmVfpReg Sd, EArmVfpReg Sm)
 	EmitDWORD(0xeeb10ac0 | ((Sd & 1) << 22) | (((Sd >> 1) & 15) << 12) | ((Sm & 1) << 5) | ((Sm >> 1) & 15));
 }
 
-void	CAssemblyWriterARM::VCMP(EArmVfpReg Sd, EArmVfpReg Sm)
+void	CAssemblyWriterARM::VABS(EArmVfpReg Sd, EArmVfpReg Sm)
 {
-	EmitDWORD(0xeeb40a40 | ((Sd & 1) << 22) |  (((Sd >> 1) & 15) << 12) | ((Sm & 1) << 5) | ((Sm >> 1) & 15));
+	EmitDWORD(0xeeb00ac0 | ((Sd & 1) << 22) | (((Sd >> 1) & 15) << 12) | ((Sm & 1) << 5) | ((Sm >> 1) & 15));
+}
+
+void	CAssemblyWriterARM::VNEG(EArmVfpReg Sd, EArmVfpReg Sm)
+{
+	EmitDWORD(0xeeb10a40 | ((Sd & 1) << 22) | (((Sd >> 1) & 15) << 12) | ((Sm & 1) << 5) | ((Sm >> 1) & 15));
+}
+
+void	CAssemblyWriterARM::VCMP(EArmVfpReg Sd, EArmVfpReg Sm, u8 E)
+{
+	EmitDWORD(0xeeb40a40 | ((Sd & 1) << 22) |  (((Sd >> 1) & 15) << 12) | ((Sm & 1) << 5) | ((Sm >> 1) & 15) | (E << 7));
 	
 	//vmrs    APSR_nzcv, FPSCR    @ Get the flags into APSR.
 	EmitDWORD(0xeef1fa10);
 }
-
+// round to zero
 void	CAssemblyWriterARM::VCVT_S32_F32(EArmVfpReg Sd, EArmVfpReg Sm)
 {
 	EmitDWORD(0xeebd0ac0 | ((Sd & 1) << 22) | (((Sd >> 1) & 15) << 12) | ((Sm & 1)<<5) | ((Sm >> 1) & 15));
+}
+
+void	CAssemblyWriterARM::VCVT_F64_F32(EArmVfpReg Dd, EArmVfpReg Sm)
+{
+	EmitDWORD(0xeeb70ac0 | (((Dd >> 4) & 1) << 22) | ((Dd & 15) << 12) | ((Sm & 1) << 5) | ((Sm >> 1) & 15));
 }
 
 void	CAssemblyWriterARM::VADD_D(EArmVfpReg Dd, EArmVfpReg Dn, EArmVfpReg Dm)
@@ -626,6 +641,11 @@ void	CAssemblyWriterARM::VMOV_S( EArmVfpReg Dm, EArmReg Rt)
 	EmitDWORD(0xee000a10 | ((Dm >> 1) << 16) | (Rt << 12) | ((Dm & 0x1) << 7));
 }
 
+void	CAssemblyWriterARM::VMOV_S( EArmVfpReg Dm, EArmVfpReg Rt)
+{
+	EmitDWORD(0xeeb00a40 | ((Dm & 1) << 22) | (((Dm>>1) & 15) << 12) | ((Rt & 1) << 5) | ((Rt >> 1) & 15));
+}
+
 void	CAssemblyWriterARM::VMOV_L(EArmReg Rt, EArmVfpReg Dm)
 {
 	EmitDWORD(0xee100b10 | ((Dm) << 16) | (Rt << 12));
@@ -646,6 +666,21 @@ void	CAssemblyWriterARM::VMOV_H(EArmVfpReg Dm, EArmReg Rt)
 	EmitDWORD(0xee200b10 | ((Dm) << 16) | (Rt << 12));
 }
 
+void	CAssemblyWriterARM::VSQRT_D(EArmVfpReg Dd, EArmVfpReg Dm)
+{
+	EmitDWORD(0xeeb10bc0 | (((Dd >> 4) & 1) << 22) | ((Dd & 15) << 12) | (((Dm >> 4) & 1) << 5) | (Dm & 15));
+}
+
+void	CAssemblyWriterARM::VABS_D(EArmVfpReg Dd, EArmVfpReg Dm)
+{
+	EmitDWORD(0xeeb00bc0 | (((Dd >> 4) & 1) << 22) | ((Dd & 15) << 12) | (((Dm >> 4) & 1) << 5) | (Dm & 15));
+}
+
+void	CAssemblyWriterARM::VNEG_D(EArmVfpReg Dd, EArmVfpReg Dm)
+{
+	EmitDWORD(0xeeb10b40 | (((Dd >> 4) & 1) << 22) | ((Dd & 15) << 12) | (((Dm >> 4) & 1) << 5) | (Dm & 15));
+}
+
 void	CAssemblyWriterARM::VMOV(EArmVfpReg Dm, EArmReg Rt, EArmReg Rt2)
 {
 	EmitDWORD(0xec400b10 | (Rt2 << 16) | (Rt << 12) | (Dm & 0b1111) | (((Dm >> 4) & 1) << 5));
@@ -656,6 +691,11 @@ void	CAssemblyWriterARM::VMOV(EArmReg Rt, EArmReg Rt2, EArmVfpReg Dm)
 	EmitDWORD(0xec500b10 | (Rt2 << 16) | (Rt << 12) | (Dm & 0b1111) | (((Dm >> 4) & 1) << 5));
 }
 
+void	CAssemblyWriterARM::VMOV( EArmVfpReg Dm, EArmVfpReg Rt)
+{
+	EmitDWORD(0xeeb00b40 | (((Dm >> 4) & 1) << 22) | ((Dm & 15) << 12) | (((Rt >> 4) & 1) << 5) | (Rt & 15));
+}
+
 void	CAssemblyWriterARM::VLDR_D(EArmVfpReg Dd, EArmReg Rn, s16 offset12)
 {
 	EmitDWORD(0xed100b00 | ((offset12 < 0) ? 0 : 1) << 23 | (((Dd >> 4) & 1) << 22) | (Rn << 16) | ((Dd & 15) << 12) | ((abs(offset12) >> 2) & 255));
@@ -664,6 +704,24 @@ void	CAssemblyWriterARM::VLDR_D(EArmVfpReg Dd, EArmReg Rn, s16 offset12)
 void	CAssemblyWriterARM::VSTR_D(EArmVfpReg Dd, EArmReg Rn, s16 offset12)
 {
 	EmitDWORD(0xed000b00 | ((offset12 < 0) ? 0 : 1) << 23 | (((Dd >> 4) & 1) << 22) | (Rn << 16) | ((Dd & 15) << 12) | ((abs(offset12) >> 2) & 255));
+}
+
+void	CAssemblyWriterARM::VCMP_D(EArmVfpReg Dd, EArmVfpReg Dm, u8 E)
+{
+	EmitDWORD(0xeeb40b40 | (((Dd >> 4) & 1) << 22) | ((Dd & 15) << 12) | (((Dm >> 4) & 1) << 5) | (Dm & 15) | (E << 7));
+
+	//vmrs    APSR_nzcv, FPSCR    @ Get the flags into APSR.
+	EmitDWORD(0xeef1fa10);
+}
+
+void	CAssemblyWriterARM::VCVT_S32_F64(EArmVfpReg Sd, EArmVfpReg Dm)
+{
+	EmitDWORD(0xeebd0bc0 | ((Sd & 1) << 22) | (((Sd >> 1) & 15) << 12) | (((Dm >> 4) & 1) << 5) | (Dm & 15));
+}
+
+void	CAssemblyWriterARM::VCVT_F32_F64(EArmVfpReg Sd, EArmVfpReg Dm)
+{
+	EmitDWORD(0xeeb70bc0 | ((Sd & 1) << 22) | (((Sd >> 1) & 15) << 12) | (((Dm >> 4) & 1) << 5) | (Dm & 15));
 }
 
 #ifdef DYNAREC_ARMV7
