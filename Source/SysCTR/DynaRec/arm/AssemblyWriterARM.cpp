@@ -21,6 +21,134 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "AssemblyWriterARM.h"
 #include <cstdio>
 
+// Calculate the number of leading zeroes in data.
+static inline uint32_t
+CountLeadingZeroesSlow(uint32_t data)
+{
+    // Other platforms must fall back to a C routine. This won't be as
+    // efficient as the CLZ instruction, but it is functional.
+    uint32_t    try_shift;
+
+    uint32_t    leading_zeroes = 0;
+
+    // This loop does a bisection search rather than the obvious rotation loop.
+    // This should be faster, though it will still be no match for CLZ.
+    for (try_shift = 16; try_shift != 0; try_shift /= 2) {
+        uint32_t    shift = leading_zeroes + try_shift;
+        if (((data << shift) >> shift) == data) {
+            leading_zeroes = shift;
+        }
+    }
+
+    return leading_zeroes;
+}
+
+inline uint32_t CountLeadingZeroes(uint32_t data)
+{
+    uint32_t    leading_zeroes;
+
+#if defined(__ARMCC__)
+    // ARMCC can do this with an intrinsic.
+    leading_zeroes = __clz(data);
+#elif defined(__GNUC__)
+    leading_zeroes = __builtin_clz(data);
+#else
+    leading_zeroes = CountLeadingZeroesSlow(data);
+#endif
+
+    return leading_zeroes;
+}
+
+// The ARM instruction set allows some flexibility to the second operand of
+// most arithmetic operations. When operand 2 is an immediate value, it takes
+// the form of an 8-bit value rotated by an even value in the range 0-30.
+//
+// Some values that can be encoded this scheme — such as 0xf000000f — are
+// probably fairly rare in practice and require extra code to detect, so this
+// function implements a fast CLZ-based heuristic to detect any value that can
+// be encoded using just a shift, and not a full rotation. For example,
+// 0xff000000 and 0x000000ff are both detected, but 0xf000000f is not.
+//
+// This function will return true to indicate that the encoding was successful,
+// or false to indicate that the literal could not be encoded as an operand 2
+// immediate. If successful, the encoded value will be written to *enc.
+inline bool encOp2Imm(uint32_t literal, uint32_t * enc)
+{
+    // The number of leading zeroes in the literal. This is used to calculate
+    // the rotation component of the encoding.
+    uint32_t    leading_zeroes;
+
+    // Components of the operand 2 encoding.
+    int32_t    rot;
+    uint32_t    imm8;
+
+    // Check the literal to see if it is a simple 8-bit value. I suspect that
+    // most literals are in fact small values, so doing this check early should
+    // give a decent speed-up.
+    if (literal < 256)
+    {
+        *enc = literal;
+        return true;
+    }
+
+    // Determine the number of leading zeroes in the literal. This is used to
+    // calculate the required rotation.
+    leading_zeroes = CountLeadingZeroes(literal);
+
+    // Assuming that we have a field of no more than 8 bits for a valid
+    // literal, we can calculate the required rotation by subtracting
+    // leading_zeroes from (32-8):
+    //
+    // Example:
+    //      0: Known to be zero.
+    //      1: Known to be one.
+    //      X: Either zero or one.
+    //      .: Zero in a valid operand 2 literal.
+    //
+    //  Literal:     [ 1XXXXXXX ........ ........ ........ ]
+    //  leading_zeroes = 0
+    //  Therefore rot (left) = 24.
+    //  Encoded 8-bit literal:                  [ 1XXXXXXX ]
+    //
+    //  Literal:     [ ........ ..1XXXXX XX...... ........ ]
+    //  leading_zeroes = 10
+    //  Therefore rot (left) = 14.
+    //  Encoded 8-bit literal:                  [ 1XXXXXXX ]
+    //
+    // Note, however, that we can only encode even shifts, and so
+    // "rot=24-leading_zeroes" is not sufficient by itself. By ignoring
+    // zero-bits in odd bit positions, we can ensure that we get a valid
+    // encoding.
+    //
+    // Example:
+    //  Literal:     [ 01XXXXXX ........ ........ ........ ]
+    //  leading_zeroes = 1
+    //  Therefore rot (left) = round_up(23) = 24.
+    //  Encoded 8-bit literal:                  [ 01XXXXXX ]
+    rot = 24 - (leading_zeroes & ~1);
+
+    // The imm8 component of the operand 2 encoding can be calculated from the
+    // rot value.
+    imm8 = literal >> rot;
+
+    // The validity of the literal can be checked by reversing the
+    // calculation. It is much easier to decode the immediate than it is to
+    // encode it!
+    if (literal != (imm8 << rot)) {
+        // The encoding is not valid, so report the failure. Calling code
+        // should use some other method of loading the value (such as LDR).
+        return false;
+    }
+
+    // The operand is valid, so encode it.
+    // Note that the ARM encoding is actually described by a rotate to the
+    // _right_, so rot must be negated here. Calculating a left shift (rather
+    // than calculating a right rotation) simplifies the above code.
+    *enc = ((-rot << 7) & 0xf00) | imm8;
+
+    return true;
+}
+
 void	CAssemblyWriterARM::TST(EArmReg rn, EArmReg rm)
 {
 	EmitDWORD(0xe1100000 | rn << 16 | rm);
@@ -41,6 +169,24 @@ void	CAssemblyWriterARM::ADD(EArmReg rd, EArmReg rn, EArmReg rm, EArmCond cond, 
 	EmitDWORD(0x00800000 | (cond << 28) | (S << 20) | ((rd) << 12) | ((rn) << 16) | rm);
 }
 
+void	CAssemblyWriterARM::ADD_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	if(encOp2Imm(imm, &enc))
+	{
+		EmitDWORD(0xe2800000 | (rd << 12) | (rn << 16) | enc );
+	}
+	else if(encOp2Imm(-imm, &enc))
+	{
+		SUB_IMM(rd, rn, -imm, temp);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		ADD(rd,rn,temp);
+	}
+}
+
 void	CAssemblyWriterARM::ADD_IMM(EArmReg rd, EArmReg rn, u8 imm, u8 ror4)
 {
 	EmitDWORD(0xe2800000 | (rd << 12) | (rn << 16) | ((ror4 & 0xf) << 8) | imm );
@@ -49,6 +195,24 @@ void	CAssemblyWriterARM::ADD_IMM(EArmReg rd, EArmReg rn, u8 imm, u8 ror4)
 void	CAssemblyWriterARM::SUB(EArmReg rd, EArmReg rn, EArmReg rm, EArmCond cond, u8 S)
 {
 	EmitDWORD(0x00400000 | (cond << 28) | (S << 20) | ((rd) << 12) | ((rn) << 16) | rm);
+}
+
+void	CAssemblyWriterARM::SUB_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	if(encOp2Imm(imm, &enc))
+	{
+		EmitDWORD(0xe2400000 | (rd << 12) | (rn << 16) | enc );
+	}
+	else if(encOp2Imm(-imm, &enc))
+	{
+		ADD_IMM(rd, rn, -imm, temp);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		SUB(rd,rn,temp);
+	}
 }
 
 void	CAssemblyWriterARM::SUB_IMM(EArmReg rd, EArmReg rn, u8 imm, u8 ror4)
@@ -61,9 +225,22 @@ void	CAssemblyWriterARM::ADC(EArmReg rd, EArmReg rn, EArmReg rm)
 	EmitDWORD(0xe0a00000 | (rd << 12) | (rn << 16) | rm);
 }
 
-void	CAssemblyWriterARM::ADC_IMM(EArmReg rd, EArmReg rn, u16 imm)
+void	CAssemblyWriterARM::ADC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
 {
-	EmitDWORD(0xe2a00000 | (rd << 12) | (rn << 16) | (imm & 0x0fff) );
+	u32 enc;
+	if (encOp2Imm(imm, &enc))
+	{
+		EmitDWORD(0xe2a00000 | (rd << 12) | (rn << 16) | enc );
+	}
+	else if (encOp2Imm(-imm - 1, &enc))
+	{
+		SBC_IMM(rd, rn, -imm - 1, temp);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		ADC(rd, rn, temp);
+	}
 }
 
 void	CAssemblyWriterARM::SBC(EArmReg rd, EArmReg rn, EArmReg rm)
@@ -71,9 +248,27 @@ void	CAssemblyWriterARM::SBC(EArmReg rd, EArmReg rn, EArmReg rm)
 	EmitDWORD(0xe0c00000 | (rd << 12) | (rn << 16) | rm);
 }
 
+void	CAssemblyWriterARM::SBC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	if (encOp2Imm(imm,&enc))
+	{
+		EmitDWORD(0xe2c00000 | (rd << 12) | (rn << 16) | enc);
+	}
+	else if(encOp2Imm(-imm-1, &enc))
+	{
+		ADC_IMM(rd, rn, -imm - 1, temp);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		SBC(rd, rn, temp);
+	}
+}
+
 void 	CAssemblyWriterARM::MUL(EArmReg rd, EArmReg rn, EArmReg rm)
 {
-	EmitDWORD(0x00800000 | (rm << 12) | (rd << 16) | rn);
+	EmitDWORD(0xe0000090 | (rm << 12) | (rd << 16) | rn);
 }
 
 void 	CAssemblyWriterARM::UMULL(EArmReg rdLo, EArmReg rdHi, EArmReg rn, EArmReg rm)
@@ -91,9 +286,50 @@ void	CAssemblyWriterARM::NEG(EArmReg rd, EArmReg rm)
 	EmitDWORD(0xe2600000 | (rd << 12) | (rm << 16));
 }
 
+void	CAssemblyWriterARM::BIC(EArmReg rd, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe1c00000 | (rd << 12) | (rn << 16) | rm);
+}
+
+void	CAssemblyWriterARM::BIC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	if (encOp2Imm(imm, &enc))
+	{
+		EmitDWORD(0xe3c00000 | (rd << 12) | (rn << 16) | enc);
+	}
+	else if (encOp2Imm(~imm, &enc))
+	{
+		AND_IMM(rd, rn, imm, temp);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		BIC(rd, rn, temp);
+	}
+}
+
 void	CAssemblyWriterARM::AND(EArmReg rd, EArmReg rn, EArmReg rm, EArmCond cond)
 {
 	EmitDWORD(0x00000000 | (cond << 28) | ((rd) << 12) | ((rn) << 16) | rm);
+}
+
+void	CAssemblyWriterARM::AND_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	if(encOp2Imm(imm, &enc))
+	{
+		EmitDWORD(0xe2000000 | (rd << 12) | (rn << 16) | enc );
+	}
+	else if (encOp2Imm(~imm, &enc))
+	{
+		BIC_IMM(rd, rn, ~imm, temp);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		AND(rd, rn, temp);
+	}
 }
 
 void	CAssemblyWriterARM::AND_IMM(EArmReg rd, EArmReg rn, u8 imm)
@@ -106,6 +342,21 @@ void	CAssemblyWriterARM::ORR(EArmReg rd, EArmReg rn, EArmReg rm)
 	EmitDWORD(0xe1800000 | (rd << 12) | (rn << 16) | rm);
 }
 
+void	CAssemblyWriterARM::ORR_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	
+	if(encOp2Imm(imm,&enc))
+	{
+		EmitDWORD(0xe3800000 | (rd << 12) | (rn << 16) | enc);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		ORR(rd, rn, temp);
+	}
+}
+
 void	CAssemblyWriterARM::XOR(EArmReg rd, EArmReg rn, EArmReg rm)
 {
 	EmitDWORD(0xe0200000 | (rd << 12) | (rn << 16) | rm);
@@ -114,6 +365,21 @@ void	CAssemblyWriterARM::XOR(EArmReg rd, EArmReg rn, EArmReg rm)
 void	CAssemblyWriterARM::XOR_IMM(EArmReg rd, EArmReg rn, u8 imm)
 {
 	EmitDWORD(0xe2200000 | (rd << 12) | (rn << 16) | imm);
+}
+
+void	CAssemblyWriterARM::XOR_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp)
+{
+	u32 enc;
+	
+	if(encOp2Imm(imm, &enc))
+	{
+		EmitDWORD(0xe2200000 | (rd << 12) | (rn << 16) | enc);
+	}
+	else
+	{
+		MOV32(temp, imm);
+		XOR(rd, rn, temp);
+	}
 }
 
 void	CAssemblyWriterARM::B(s32 offset, EArmCond cond)
@@ -235,6 +501,11 @@ void	CAssemblyWriterARM::STRH_REG(EArmReg rt, EArmReg rn, EArmReg rm)
 void	CAssemblyWriterARM::STRB_REG(EArmReg rt, EArmReg rn, EArmReg rm)
 {
 	EmitDWORD(0xe7400000 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
+void	CAssemblyWriterARM::MVN(EArmReg rd, EArmReg rm)
+{
+	EmitDWORD(0xe1e00000 | (rd << 12) | rm);
 }
 
 void	CAssemblyWriterARM::MOV(EArmReg rd, EArmReg rm)
@@ -474,7 +745,7 @@ void CAssemblyWriterARM::InsertLiteralPool(bool branch)
 
 		*op = *op | (offset - 8);
 
-		EmitDWORD((*literals)[i].Value);
+		EmitConstant((*literals)[i].Value);
 	}
 
 	literals->clear();

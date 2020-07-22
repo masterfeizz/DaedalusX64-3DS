@@ -1123,7 +1123,7 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 				case SpecOp_OR:		GenerateOR( rd, rs, rt ); handled = true; break;
 				case SpecOp_AND:	GenerateAND( rd, rs, rt ); handled = true; break;
 				case SpecOp_XOR:	GenerateXOR( rd, rs, rt ); handled = true; break;
-				// case SpecOp_NOR:	GenerateNOR( rd, rs, rt );	handled = true; break;
+				case SpecOp_NOR:	GenerateNOR( rd, rs, rt );	handled = true; break;
 
 				case SpecOp_ADD:	GenerateADDU( rd, rs, rt );	handled = true; break;
 				case SpecOp_ADDU:	GenerateADDU( rd, rs, rt );	handled = true; break;
@@ -1277,9 +1277,6 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 		}
 	}
 
-	//Insure literal pool will be within range
-	if(GetLiteralPoolDistance() > 4000)
-		InsertLiteralPool(true);
 
 	return exception_handler;
 }
@@ -1598,7 +1595,7 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 
 					if (uoffset)
 					{
-						ADD_IMM(ArmReg_R0, store_reg, uoffset);
+						ADD_IMM(ArmReg_R0, store_reg, uoffset, 0);
 						store_reg = ArmReg_R0;
 					}
 				}
@@ -1613,7 +1610,7 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 					
 					if (uoffset)
 					{
-						SUB_IMM(ArmReg_R0, store_reg, uoffset);
+						SUB_IMM(ArmReg_R0, store_reg, uoffset, 0);
 						store_reg = ArmReg_R0;
 					}
 				}
@@ -1813,8 +1810,7 @@ void CCodeGeneratorARM::GenerateADDIU( EN64Reg rt, EN64Reg rs, s16 immediate )
 		EArmReg reg = GetRegisterAndLoadLo(rs, ArmReg_R0);
 		EArmReg dst = GetRegisterNoLoadLo(rt, ArmReg_R1);
 
-		MOV32(ArmReg_R1, (u32)immediate);
-		ADD(dst, reg, ArmReg_R1);
+		ADD_IMM(dst, reg, immediate, ArmReg_R1);
 
 		UpdateRegister(rt, dst, URO_HI_SIGN_EXTEND);
 	}
@@ -1827,10 +1823,11 @@ void CCodeGeneratorARM::GenerateDADDIU( EN64Reg rt, EN64Reg rs, s16 immediate )
 	MOV32(ArmReg_R1, (u32)immediate);
 
 	ADD(regt, regs, ArmReg_R1, AL, 1);
-	MOV_IMM(ArmReg_R1, 0);
-	ADC_IMM(ArmReg_R1, ArmReg_R1, 0);
-
 	StoreRegisterLo(rt, regt);
+	
+	EArmReg regs_hi = GetRegisterAndLoadHi(rs, ArmReg_R0);
+	EArmReg regt_hi = GetRegisterNoLoadHi(rt, ArmReg_R0);
+	ADC_IMM(regt_hi, regs_hi, (s64)immediate >> 32, ArmReg_R1);
 	StoreRegisterHi(rt, ArmReg_R1);
 }
 
@@ -1874,9 +1871,8 @@ void CCodeGeneratorARM::GenerateANDI( EN64Reg rt, EN64Reg rs, u16 immediate )
 {
 	EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
 	EArmReg regt = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	MOV32(ArmReg_R1, (u32)immediate);
 
-	AND(regt, regs, ArmReg_R1);
+	AND_IMM(regt, regs, immediate, ArmReg_R1);
 
 	UpdateRegister(rt, regt, URO_HI_CLEAR);
 }
@@ -1899,10 +1895,8 @@ void CCodeGeneratorARM::GenerateORI( EN64Reg rt, EN64Reg rs, u16 immediate )
 	{
 		EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
 		EArmReg regt = GetRegisterNoLoadLo(rt, ArmReg_R0);
-		MOV32(ArmReg_R1, (u32)immediate);
-
-		ORR(regt, regs, ArmReg_R1);
-		UpdateRegister(rt, regt, URO_HI_CLEAR);
+		ORR_IMM(regt, regs, immediate, ArmReg_R1);
+		StoreRegisterLo( rt, regt );
 	}
 }
 
@@ -1910,10 +1904,9 @@ void CCodeGeneratorARM::GenerateXORI( EN64Reg rt, EN64Reg rs, u16 immediate )
 {
 	EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
 	EArmReg regt = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	MOV32(ArmReg_R1, (u32)immediate);
 
-	XOR(regt, regs, ArmReg_R1);
-	UpdateRegister(rt, regt, URO_HI_CLEAR);
+	XOR_IMM(regt, regs, immediate, ArmReg_R1);
+	StoreRegisterLo( rt, regt);
 }
 
 // Set on Less Than Immediate
@@ -2139,20 +2132,46 @@ void CCodeGeneratorARM::GenerateXOR( EN64Reg rd, EN64Reg rs, EN64Reg rt )
 
 void CCodeGeneratorARM::GenerateNOR( EN64Reg rd, EN64Reg rs, EN64Reg rt )
 {
-	EArmReg regt_lo = GetRegisterAndLoadLo(rt, ArmReg_R0);
-	EArmReg regs_lo = GetRegisterAndLoadLo(rs, ArmReg_R1);
-	EArmReg regd_lo = GetRegisterNoLoadLo(rd, ArmReg_R0);
+	
+	if (rs == N64Reg_R0 || rt == N64Reg_R0)
+	{
+		EN64Reg fromReg;
+		if (rs == N64Reg_R0)
+		{
+			fromReg = rt;
+		}
+		else
+		{
+			fromReg = rs;
+		}
+		
+		EArmReg regf_lo = GetRegisterAndLoadLo(fromReg, ArmReg_R0);
+		EArmReg regd_lo = GetRegisterNoLoadLo(rd, ArmReg_R0);
+		MVN(regd_lo, regf_lo);
+		StoreRegisterLo(rd, regd_lo);
+		
+		EArmReg regf_hi = GetRegisterAndLoadHi(fromReg, ArmReg_R0);
+		EArmReg regd_hi = GetRegisterNoLoadHi(rd, ArmReg_R0);
+		MVN(regd_hi, regf_hi);
+		StoreRegisterHi(rd, regd_hi);
+	}
+	else
+	{
+		EArmReg regt_lo = GetRegisterAndLoadLo(rt, ArmReg_R0);
+		EArmReg regs_lo = GetRegisterAndLoadLo(rs, ArmReg_R1);
+		EArmReg regd_lo = GetRegisterNoLoadLo(rd, ArmReg_R0);
 
-	ORR(regd_lo, regs_lo, regt_lo);
-	NEG(regd_lo, regd_lo);
+		ORR(regd_lo, regs_lo, regt_lo);
+		MVN(regd_lo, regd_lo);
 
-	StoreRegisterLo(rd, regd_lo);
-	EArmReg regt_hi = GetRegisterAndLoadHi(rt, ArmReg_R0);
-	EArmReg regs_hi = GetRegisterAndLoadHi(rs, ArmReg_R1);
-	EArmReg regd_hi = GetRegisterNoLoadHi(rd, ArmReg_R0);
-	ORR(regd_hi, regs_hi, regt_hi);
-	NEG(regd_hi, regd_hi);
-	StoreRegisterHi(rd, regd_hi);
+		StoreRegisterLo(rd, regd_lo);
+		EArmReg regt_hi = GetRegisterAndLoadHi(rt, ArmReg_R0);
+		EArmReg regs_hi = GetRegisterAndLoadHi(rs, ArmReg_R1);
+		EArmReg regd_hi = GetRegisterNoLoadHi(rd, ArmReg_R0);
+		ORR(regd_hi, regs_hi, regt_hi);
+		MVN(regd_hi, regd_hi);
+		StoreRegisterHi(rd, regd_hi);
+	}
 }
 
 void CCodeGeneratorARM::GenerateAND( EN64Reg rd, EN64Reg rs, EN64Reg rt )
@@ -2328,11 +2347,24 @@ void CCodeGeneratorARM::GenerateBEQ( EN64Reg rs, EN64Reg rt, const SBranchDetail
 	DAEDALUS_ASSERT( p_branch->Direct, "Indirect branch for BEQ?" );
 	#endif
 
-	EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
-	EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R1);
+	if (rt == N64Reg_R0)
+	{
+		EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
+		CMP_IMM(regs, 0);
+	}
+	else if (rs == N64Reg_R0)
+	{
+		EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R0);
+		CMP_IMM(regt, 0);
+	}
+	else
+	{
+		EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
+		EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R1);
 
-	// XXXX This may actually need to be a 64 bit compare, but this is what R4300.cpp does
-	CMP(regs, regt);
+		// XXXX This may actually need to be a 64 bit compare, but this is what R4300.cpp does
+		CMP(regs, regt);
+	}
 
 	if( p_branch->ConditionalBranchTaken )
 	{
@@ -2352,11 +2384,24 @@ void CCodeGeneratorARM::GenerateBNE( EN64Reg rs, EN64Reg rt, const SBranchDetail
 	DAEDALUS_ASSERT( p_branch->Direct, "Indirect branch for BEQ?" );
 	#endif
 
-	EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
-	EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R1);
+	if (rt == N64Reg_R0)
+	{
+		EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
+		CMP_IMM(regs, 0);
+	}
+	else if (rs == N64Reg_R0)
+	{
+		EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R0);
+		CMP_IMM(regt, 0);
+	}
+	else
+	{
+		EArmReg regs = GetRegisterAndLoadLo(rs, ArmReg_R0);
+		EArmReg regt = GetRegisterAndLoadLo(rt, ArmReg_R1);
 
-	// XXXX This may actually need to be a 64 bit compare, but this is what R4300.cpp does
-	CMP(regs, regt);
+		// XXXX This may actually need to be a 64 bit compare, but this is what R4300.cpp does
+		CMP(regs, regt);
+	}
 
 	if( p_branch->ConditionalBranchTaken )
 	{

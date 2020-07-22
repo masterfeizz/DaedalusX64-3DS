@@ -48,28 +48,36 @@ class CAssemblyWriterARM
 		inline void NOP()	{	EmitDWORD(0xe1a00000);	}
 
 		void				ADD    (EArmReg rd, EArmReg rn, EArmReg rm, EArmCond = AL, u8 S = 0);
+		void				ADD_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
 		void				ADD_IMM(EArmReg rd, EArmReg rn, u8 imm, u8 ror4 = 0);
-
 		void				ADC    (EArmReg rd, EArmReg rn, EArmReg rm);
-		void				ADC_IMM(EArmReg rd, EArmReg rn, u16 imm);
-
+		void				ADC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
+		
 		void				SBC(EArmReg rd, EArmReg rn, EArmReg rm);
-
+		void				SBC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
+		
 		void				SUB(EArmReg rd, EArmReg rn, EArmReg rm, EArmCond = AL, u8 S = 0);
-		void				SUB_IMM(EArmReg rd, EArmReg rn, u8 imm, u8 ror4 = 0);
+		void				SUB_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
+		void				SUB_IMM(EArmReg rd, EArmReg rn, u8 imm, u8 ror);
 
 		void				MUL  (EArmReg rd, EArmReg rn, EArmReg rm);
 		void				UMULL(EArmReg rdLo, EArmReg rdHi, EArmReg rn, EArmReg rm);
 		void				SMULL(EArmReg rdLo, EArmReg rdHi, EArmReg rn, EArmReg rm);
 
 		void				NEG(EArmReg rd, EArmReg rm);
-
+		void				BIC(EArmReg rd, EArmReg rn, EArmReg rm);
+		void				BIC_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
+		
 		void				AND    (EArmReg rd, EArmReg rn, EArmReg rm, EArmCond = AL);
 		void				AND_IMM(EArmReg rd, EArmReg rn, u8 imm);
+		void				AND_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
 
 		void				ORR(EArmReg rd, EArmReg rn, EArmReg rm);
+		void				ORR_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
+		
 		void				XOR(EArmReg rd, EArmReg rn, EArmReg rm);
 		void                XOR_IMM(EArmReg rd, EArmReg rn, u8 imm);
+		void                XOR_IMM(EArmReg rd, EArmReg rn, u32 imm, EArmReg temp);
 
 		void				TST    (EArmReg rn, EArmReg rm);
 		void				CMP    (EArmReg rn, EArmReg rm);
@@ -104,6 +112,7 @@ class CAssemblyWriterARM
 		void				STRB_REG(EArmReg rt, EArmReg rn, EArmReg rm);
 		void				STRD(EArmReg rt, EArmReg rn, s16 offset);
 
+		void				MVN(EArmReg rd, EArmReg rm);
 		void				MOV    (EArmReg rd, EArmReg rm);
 		void				MOV_LSL(EArmReg rd, EArmReg rn, EArmReg rm);
 		void				MOV_LSR(EArmReg rd, EArmReg rn, EArmReg rm);
@@ -163,9 +172,21 @@ class CAssemblyWriterARM
 
 		inline void EmitDWORD(u32 dword)
 		{
+			int dist = GetLiteralPoolDistance(); 
 			mpAssemblyBuffer->EmitDWORD( dword );
+			
+			if (dist == 4084)
+			{
+				// make sure our PC relative loads arn't too far away from the pool
+				InsertLiteralPool(true);
+			}
 		}
 
+		inline void EmitConstant(u32 c)
+		{
+			mpAssemblyBuffer->EmitDWORD( c );
+		}
+		
 		CAssemblyBuffer*	mpAssemblyBuffer;
 		CAssemblyBuffer*    mpAssemblyBufferA;
 		CAssemblyBuffer*    mpAssemblyBufferB;
