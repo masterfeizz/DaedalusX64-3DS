@@ -967,8 +967,19 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchAlways( CCodeLabel target )
 //*****************************************************************************
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfSet( const u32 * p_var, CCodeLabel target )
 {
-	MOV32(ArmReg_R1, (u32)p_var);
-	LDR(ArmReg_R0, ArmReg_R1, 0);
+	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	
+	// if this is in range of CPUState, just load it
+	if (diff <= 0xFFF && diff >= -0xFFF)
+	{
+		LDR(ArmReg_R0, ArmReg_R12, diff);
+	}
+	else
+	{
+		MOV32(ArmReg_R1, (u32)p_var);
+		LDR(ArmReg_R0, ArmReg_R1, 0);
+	}
+	
 	CMP_IMM(ArmReg_R0, 0);
 
 	return BX_IMM(target, NE);
@@ -979,8 +990,18 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchIfSet( const u32 * p_var, CCodeLa
 //*****************************************************************************
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfNotSet( const u32 * p_var, CCodeLabel target )
 {
-	MOV32(ArmReg_R1, (u32)p_var);
-	LDR(ArmReg_R0, ArmReg_R1, 0);
+	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	
+	// if this is in range of CPUState, just load it
+	if (diff <= 0xFFF && diff >= -0xFFF)
+	{
+		LDR(ArmReg_R0, ArmReg_R12, diff);
+	}
+	else
+	{
+		MOV32(ArmReg_R1, (u32)p_var);
+		LDR(ArmReg_R0, ArmReg_R1, 0);
+	}
 	CMP_IMM(ArmReg_R0, 0);
 
 	return BX_IMM(target, EQ);
@@ -991,8 +1012,18 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchIfNotSet( const u32 * p_var, CCod
 //*****************************************************************************
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfEqual( const u32 * p_var, u32 value, CCodeLabel target )
 {
-	MOV32(ArmReg_R1, (u32)p_var);
-	LDR(ArmReg_R0, ArmReg_R1, 0);
+	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	
+	// if this is in range of CPUState, just load it
+	if (diff <= 0xFFF && diff >= -0xFFF)
+	{
+		LDR(ArmReg_R0, ArmReg_R12, diff);
+	}
+	else
+	{
+		MOV32(ArmReg_R1, (u32)p_var);
+		LDR(ArmReg_R0, ArmReg_R1, 0);
+	}
 	MOV32(ArmReg_R1, value);
 
 	CMP(ArmReg_R0, ArmReg_R1);
@@ -1002,8 +1033,18 @@ CJumpLocation	CCodeGeneratorARM::GenerateBranchIfEqual( const u32 * p_var, u32 v
 
 CJumpLocation	CCodeGeneratorARM::GenerateBranchIfNotEqual( const u32 * p_var, u32 value, CCodeLabel target )
 {
-	MOV32(ArmReg_R1, (u32)p_var);
-	LDR(ArmReg_R0, ArmReg_R1, 0);
+	size_t diff = (u8*)p_var - (u8*)&gCPUState;
+	
+	// if this is in range of CPUState, just load it
+	if (diff <= 0xFFF && diff >= -0xFFF)
+	{
+		LDR(ArmReg_R0, ArmReg_R12, diff);
+	}
+	else
+	{
+		MOV32(ArmReg_R1, (u32)p_var);
+		LDR(ArmReg_R0, ArmReg_R1, 0);
+	}
 	MOV32(ArmReg_R1, value);
 
 	CMP(ArmReg_R0, ArmReg_R1);
