@@ -68,6 +68,87 @@ static const bool		gDynarecStackOptimisation = true;
 extern "C" { void _DirectExitCheckNoDelay( u32 instructions_executed, u32 exit_pc ); }
 extern "C" { void _DirectExitCheckDelay( u32 instructions_executed, u32 exit_pc, u32 target_pc ); }
 extern "C" { void _IndirectExitCheck( u32 instructions_executed, CIndirectExitMap* map, u32 exit_pc ); }
+extern "C" { const void * g_MemoryLookupTableReadForDynarec = g_MemoryLookupTableRead; }
+extern "C" { 	
+	void HandleException_extern()
+	{
+		switch (gCPUState.Delay)
+		{
+			case DO_DELAY:
+				gCPUState.CurrentPC += 4;
+				gCPUState.Delay = EXEC_DELAY;
+				break;
+			case EXEC_DELAY:
+				gCPUState.CurrentPC = gCPUState.TargetPC;
+				gCPUState.Delay = NO_DELAY;
+				break;
+			case NO_DELAY:
+				gCPUState.CurrentPC += 4;
+				break;
+			default:
+				NODEFAULT;
+		}
+	}
+}
+
+extern "C"
+{
+	u32 _ReadBitsDirect_u8( u32 address, u32 current_pc );
+	u32 _ReadBitsDirect_s8( u32 address, u32 current_pc );
+	u32 _ReadBitsDirect_u16( u32 address, u32 current_pc );
+	u32 _ReadBitsDirect_s16( u32 address, u32 current_pc );
+	u32 _ReadBitsDirect_u32( u32 address, u32 current_pc );
+
+	u32 _ReadBitsDirectBD_u8( u32 address, u32 current_pc );
+	u32 _ReadBitsDirectBD_s8( u32 address, u32 current_pc );
+	u32 _ReadBitsDirectBD_u16( u32 address, u32 current_pc );
+	u32 _ReadBitsDirectBD_s16( u32 address, u32 current_pc );
+	u32 _ReadBitsDirectBD_u32( u32 address, u32 current_pc );
+
+	// Dynarec calls this for simplicity
+	void Write32BitsForDynaRec( u32 address, u32 value )
+	{
+		Write32Bits_NoSwizzle( address, value );
+	}
+	void Write16BitsForDynaRec( u32 address, u16 value )
+	{
+		Write16Bits_NoSwizzle( address, value );
+	}
+	void Write8BitsForDynaRec( u32 address, u8 value )
+	{
+		Write8Bits_NoSwizzle( address, value );
+	}
+
+	void _WriteBitsDirect_u32( u32 address, u32 value, u32 current_pc );
+	void _WriteBitsDirect_u16( u32 address, u32 value, u32 current_pc );		// Value in low 16 bits
+	void _WriteBitsDirect_u8( u32 address, u32 value, u32 current_pc );			// Value in low 8 bits
+
+	void _WriteBitsDirectBD_u32( u32 address, u32 value, u32 current_pc );
+	void _WriteBitsDirectBD_u16( u32 address, u32 value, u32 current_pc );		// Value in low 16 bits
+	void _WriteBitsDirectBD_u8( u32 address, u32 value, u32 current_pc );			// Value in low 8 bits
+}
+
+#define ReadBitsDirect_u8 _ReadBitsDirect_u8
+#define ReadBitsDirect_s8 _ReadBitsDirect_s8
+#define ReadBitsDirect_u16 _ReadBitsDirect_u16
+#define ReadBitsDirect_s16 _ReadBitsDirect_s16
+#define ReadBitsDirect_u32 _ReadBitsDirect_u32
+
+#define ReadBitsDirectBD_u8 _ReadBitsDirectBD_u8
+#define ReadBitsDirectBD_s8 _ReadBitsDirectBD_s8
+#define ReadBitsDirectBD_u16 _ReadBitsDirectBD_u16
+#define ReadBitsDirectBD_s16 _ReadBitsDirectBD_s16
+#define ReadBitsDirectBD_u32 _ReadBitsDirectBD_u32
+
+
+#define WriteBitsDirect_u32 _WriteBitsDirect_u32
+#define WriteBitsDirect_u16 _WriteBitsDirect_u16
+#define WriteBitsDirect_u8 _WriteBitsDirect_u8
+
+#define WriteBitsDirectBD_u32 _WriteBitsDirectBD_u32
+#define WriteBitsDirectBD_u16 _WriteBitsDirectBD_u16
+#define WriteBitsDirectBD_u8 _WriteBitsDirectBD_u8
+
 
 //Helper functions used for slow loads
 s32 Read8Bits_Signed ( u32 address ) { return (s8) Read8Bits(address); };
@@ -1081,24 +1162,24 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 		case OP_DADDI:	GenerateDADDIU( rt, rs, s16( op_code.immediate ) );	handled = true; break;
 		case OP_DADDIU:	GenerateDADDIU( rt, rs, s16( op_code.immediate ) );	handled = true; break;
 
-		case OP_SW:		handled = GenerateSW(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_SH:		handled = GenerateSH(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_SB:		handled = GenerateSB(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_SD:		handled = GenerateSD(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_SWC1:	handled = GenerateSWC1(ft, base, s16(op_code.immediate)); exception = !handled; break;
-		case OP_SDC1:	handled = GenerateSDC1(ft, base, s16(op_code.immediate)); exception = !handled; break;
+		case OP_SW:		handled = GenerateSW(address, branch_delay_slot, rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_SH:		handled = GenerateSH(address, branch_delay_slot, rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_SB:		handled = GenerateSB(address, branch_delay_slot,rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_SD:		handled = GenerateSD(address, branch_delay_slot,rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_SWC1:	handled = GenerateSWC1(address, branch_delay_slot,ft, base, s16(op_code.immediate)); exception = !handled; break;
+		case OP_SDC1:	handled = GenerateSDC1(address, branch_delay_slot,ft, base, s16(op_code.immediate)); exception = !handled; break;
 
 		case OP_SLTIU: 	GenerateSLTI( rt, rs, s16( op_code.immediate ), true );  handled = true; break;
 		case OP_SLTI:	GenerateSLTI( rt, rs, s16( op_code.immediate ), false ); handled = true; break;
 
-		case OP_LW:		handled = GenerateLW(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_LH:		handled = GenerateLH(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_LHU: 	handled = GenerateLHU(rt, base, s16(op_code.immediate));  exception = !handled; break;
-		case OP_LB: 	handled = GenerateLB(rt, base, s16(op_code.immediate));   exception = !handled; break;
-		case OP_LBU:	handled = GenerateLBU(rt, base, s16(op_code.immediate));  exception = !handled; break;
-		case OP_LD:		handled = GenerateLD( rt, base, s16(op_code.immediate));  exception = !handled; break;
-		case OP_LWC1:	handled = GenerateLWC1(ft, base, s16(op_code.immediate)); exception = !handled; break;
-		case OP_LDC1:	handled = GenerateLDC1(ft, base, s16(op_code.immediate)); exception = !handled; break;
+		case OP_LW:		handled = GenerateLW(address, branch_delay_slot,rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_LH:		handled = GenerateLH(address, branch_delay_slot,rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_LHU: 	handled = GenerateLHU(address, branch_delay_slot,rt, base, s16(op_code.immediate));  exception = !handled; break;
+		case OP_LB: 	handled = GenerateLB(address, branch_delay_slot,rt, base, s16(op_code.immediate));   exception = !handled; break;
+		case OP_LBU:	handled = GenerateLBU(address, branch_delay_slot,rt, base, s16(op_code.immediate));  exception = !handled; break;
+		case OP_LD:		handled = GenerateLD(address, branch_delay_slot, rt, base, s16(op_code.immediate));  exception = !handled; break;
+		case OP_LWC1:	handled = GenerateLWC1(address, branch_delay_slot,ft, base, s16(op_code.immediate)); exception = !handled; break;
+		case OP_LDC1:	handled = GenerateLDC1(address, branch_delay_slot,ft, base, s16(op_code.immediate)); exception = !handled; break;
 
 		case OP_LUI:	GenerateLUI( rt, s16( op_code.immediate ) ); handled = true; break;
 
@@ -1366,7 +1447,7 @@ CJumpLocation CCodeGeneratorARM::ExecuteNativeFunction( CCodeLabel speed_hack, b
 //*****************************************************************************
 
 //Helper function, loads into given register
-inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, void* p_read_memory )
+inline void CCodeGeneratorARM::GenerateLoad( u32 current_pc, EArmReg arm_dest, EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, ReadMemoryFunction p_read_memory )
 {
 	if (gDynarecStackOptimisation && base == N64Reg_SP)
 	{
@@ -1410,14 +1491,14 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 		EArmReg load_reg = reg_base;
 		if (offset != 0)
 		{
-			ADD_IMM(ArmReg_R1, reg_base, offset, ArmReg_R1);
-			load_reg = ArmReg_R1;
+			ADD_IMM(ArmReg_R0, reg_base, offset, ArmReg_R1);
+			load_reg = ArmReg_R0;
 		}
 		
 		if (twiddle != 0 )
 		{
-			XOR_IMM(ArmReg_R1, load_reg, twiddle);
-			load_reg = ArmReg_R1;
+			XOR_IMM(ArmReg_R0, load_reg, twiddle);
+			load_reg = ArmReg_R0;
 		}
 		CMP(load_reg, gMemUpperBoundReg);
 		CJumpLocation loc = BX_IMM(CCodeLabel { NULL }, GE );
@@ -1447,12 +1528,6 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 		
 
 		PatchJumpLong( loc, GetAssemblyBuffer()->GetLabel() );
-		load_reg = reg_base;
-		if (offset != 0) {
-			MOV32(ArmReg_R1, offset);
-			ADD(ArmReg_R0, reg_base, ArmReg_R1);
-			load_reg = ArmReg_R0;
-		}
 
 		CN64RegisterCacheARM current_regs(mRegisterCache);
 		FlushAllRegisters(mRegisterCache, true);
@@ -1461,7 +1536,9 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 		{
 			MOV(ArmReg_R0, load_reg);
 		}
-		CALL( CCodeLabel( (void*)p_read_memory ) );
+		MOV32(ArmReg_R1, current_pc);
+		MOV32(ArmReg_R4, (u32)p_read_memory);
+		BLX( ArmReg_R4 );
 
 		// Restore all registers BEFORE copying back final value
 		RestoreAllRegisters(mRegisterCache, current_regs);
@@ -1487,72 +1564,72 @@ inline void CCodeGeneratorARM::GenerateLoad( EArmReg arm_dest, EN64Reg base, s16
 }
 
 //Load Word
-bool CCodeGeneratorARM::GenerateLW( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLW( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg arm_dest = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	GenerateLoad( arm_dest, base, offset, 0, 32, false, (void*)Read32Bits );
+	GenerateLoad( address, arm_dest, base, offset, 0, 32, false, set_branch_delay ? ReadBitsDirectBD_u32 : ReadBitsDirect_u32 );
 	UpdateRegister(rt, arm_dest, URO_HI_SIGN_EXTEND);
 	return true;
 }
 
 //Load Double Word
-bool CCodeGeneratorARM::GenerateLD( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLD( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg regt_hi= GetRegisterNoLoadHi(rt, ArmReg_R0);
-	GenerateLoad( regt_hi, base, offset, 0, 32, false, (void*)Read32Bits );
+	GenerateLoad( address, regt_hi, base, offset, 0, 32, false, set_branch_delay ? ReadBitsDirectBD_u32 : ReadBitsDirect_u32 );
 	StoreRegisterHi(rt, regt_hi);
 
 	EArmReg regt_lo = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	GenerateLoad( regt_lo, base, offset + 4, 0, 32, false, (void*)Read32Bits );
+	GenerateLoad( address, regt_lo, base, offset + 4, 0, 32, false, set_branch_delay ? ReadBitsDirectBD_u32 : ReadBitsDirect_u32 );
 	StoreRegisterLo(rt, regt_lo);
 
 	return true;
 }
 
 //Load half word signed
-bool CCodeGeneratorARM::GenerateLH( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLH( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg arm_dest = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	GenerateLoad( arm_dest, base, offset, U16_TWIDDLE, 16, true, (void*)Read16Bits_Signed );
+	GenerateLoad( address, arm_dest, base, offset, U16_TWIDDLE, 16, true, set_branch_delay ? ReadBitsDirectBD_s16 : ReadBitsDirect_s16 );
 	UpdateRegister(rt, arm_dest, URO_HI_SIGN_EXTEND);
 
 	return true;
 }
 
 //Load half word unsigned
-bool CCodeGeneratorARM::GenerateLHU( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLHU( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg arm_dest = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	GenerateLoad(arm_dest, base, offset, U16_TWIDDLE, 16, false, (void*)Read16Bits );
+	GenerateLoad(address, arm_dest, base, offset, U16_TWIDDLE, 16, false, set_branch_delay ? ReadBitsDirectBD_u16 : ReadBitsDirect_u16 );
 	UpdateRegister(rt, arm_dest, URO_HI_CLEAR);
 
 	return true;
 }
 
 //Load byte signed
-bool CCodeGeneratorARM::GenerateLB( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLB( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg arm_dest = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	GenerateLoad( arm_dest, base, offset, U8_TWIDDLE, 8, true, (void*)Read8Bits_Signed );
+	GenerateLoad( address, arm_dest, base, offset, U8_TWIDDLE, 8, true, set_branch_delay ? ReadBitsDirectBD_s8 : ReadBitsDirect_s8 );
 	UpdateRegister(rt, arm_dest, URO_HI_SIGN_EXTEND);
 
 	return true;
 }
 
 //Load byte unsigned
-bool CCodeGeneratorARM::GenerateLBU( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLBU( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg arm_dest = GetRegisterNoLoadLo(rt, ArmReg_R0);
-	GenerateLoad( arm_dest, base, offset, U8_TWIDDLE, 8, false, (void*)Read8Bits );
+	GenerateLoad( address, arm_dest, base, offset, U8_TWIDDLE, 8, false, set_branch_delay ? ReadBitsDirectBD_u8 : ReadBitsDirect_u8 );
 	UpdateRegister(rt, arm_dest, URO_HI_CLEAR);
 
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateLWC1( u32 ft, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLWC1( u32 address, bool set_branch_delay, u32 ft, EN64Reg base, s16 offset )
 {
 	EArmVfpReg arm_ft = EArmVfpReg(ft);
-	GenerateLoad( ArmReg_R0, base, offset, 0, 32, false, (void*)Read32Bits );
+	GenerateLoad( address, ArmReg_R0, base, offset, 0, 32, false, set_branch_delay ? ReadBitsDirectBD_u32 : ReadBitsDirect_u32 );
 	
 	VMOV_S(arm_ft, ArmReg_R0);
 	
@@ -1560,15 +1637,15 @@ bool CCodeGeneratorARM::GenerateLWC1( u32 ft, EN64Reg base, s16 offset )
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateLDC1( u32 ft, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateLDC1( u32 address, bool set_branch_delay, u32 ft, EN64Reg base, s16 offset )
 {
 	EArmVfpReg arm_ft = EArmVfpReg(ft+1);
-	GenerateLoad( ArmReg_R0, base, offset, 0, 32, false, (void*)Read32Bits );
+	GenerateLoad(address, ArmReg_R0, base, offset, 0, 32, false, set_branch_delay ? ReadBitsDirectBD_u32 : ReadBitsDirect_u32 );
 	VMOV_S(arm_ft, ArmReg_R0);
 	UpdateFloatRegister(EN64FloatReg(ft+1));
 
 	arm_ft = EArmVfpReg(ft);
-	GenerateLoad( ArmReg_R0, base, offset + 4, 0, 32, false, (void*)Read32Bits );
+	GenerateLoad( address, ArmReg_R0, base, offset + 4, 0, 32, false, set_branch_delay ? ReadBitsDirectBD_u32 : ReadBitsDirect_u32 );
 	VMOV_S(arm_ft, ArmReg_R0);
 	UpdateFloatRegister(EN64FloatReg(ft));
 	return true;
@@ -1587,7 +1664,7 @@ void CCodeGeneratorARM::GenerateLUI( EN64Reg rt, s16 immediate )
 //*****************************************************************************
 
 //Helper function, stores register R1 into memory
-inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 offset, u8 twiddle, u8 bits, void* p_write_memory )
+inline void CCodeGeneratorARM::GenerateStore(u32 address, EArmReg arm_src, EN64Reg base, s16 offset, u8 twiddle, u8 bits, WriteMemoryFunction p_write_memory )
 {
 	if (gDynarecStackOptimisation && base == N64Reg_SP)
 	{
@@ -1664,23 +1741,17 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 		{
 			MOV(ArmReg_R0, store_reg);
 		}
-		else
-		{
-			if (twiddle != 0)
-			{
-				// undo the twiddle from above
-				XOR_IMM(ArmReg_R0, store_reg, twiddle);
-			}
-		}
 
 		if (arm_src != ArmReg_R1)
 		{
 			MOV(ArmReg_R1, arm_src);
 		}
 
+		MOV32(ArmReg_R2, address);
 		CN64RegisterCacheARM current_regs(mRegisterCache);
 		FlushAllRegisters(mRegisterCache, true);
-		CALL( CCodeLabel( (void*)p_write_memory ) );
+		MOV32(ArmReg_R3, (u32)p_write_memory);
+		BLX( ArmReg_R3  );
 		// Restore all registers BEFORE copying back final value
 		RestoreAllRegisters(mRegisterCache, current_regs);
 		mRegisterCache = current_regs;
@@ -1699,56 +1770,56 @@ inline void CCodeGeneratorARM::GenerateStore(EArmReg arm_src, EN64Reg base, s16 
 }
 
 // Store Word From Copro 1
-bool CCodeGeneratorARM::GenerateSWC1( u32 ft, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateSWC1( u32 address, bool set_branch_delay, u32 ft, EN64Reg base, s16 offset )
 {
 	EArmVfpReg arm_ft = GetFloatRegisterAndLoad(EN64FloatReg(ft));
 	VMOV_S(ArmReg_R1, arm_ft);
-	GenerateStore( ArmReg_R1, base, offset, 0, 32, (void*)Write32Bits );
+	GenerateStore( address, ArmReg_R1, base, offset, 0, 32, set_branch_delay ? WriteBitsDirectBD_u32 : WriteBitsDirect_u32 );
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateSDC1( u32 ft, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateSDC1( u32 address, bool set_branch_delay, u32 ft, EN64Reg base, s16 offset )
 {
 	EArmVfpReg arm_ft = GetDoubleRegisterAndLoad(EN64FloatReg(ft));
 	
 	VMOV_H(ArmReg_R1, arm_ft);
-	GenerateStore( ArmReg_R1, base, offset, 0, 32, (void*)Write32Bits );
+	GenerateStore( address, ArmReg_R1, base, offset, 0, 32, set_branch_delay ? WriteBitsDirectBD_u32 : WriteBitsDirect_u32);
 
 	VMOV_L(ArmReg_R1, arm_ft);
-	GenerateStore( ArmReg_R1, base, offset + 4, 0, 32, (void*)Write32Bits );
+	GenerateStore( address, ArmReg_R1, base, offset + 4, 0, 32, set_branch_delay ? WriteBitsDirectBD_u32 : WriteBitsDirect_u32 );
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateSW( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateSW( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg reg = GetRegisterAndLoadLo(rt, ArmReg_R1);
-	GenerateStore( reg, base, offset, 0, 32, (void*)Write32Bits );
+	GenerateStore( address, reg, base, offset, 0, 32, set_branch_delay ? WriteBitsDirectBD_u32 : WriteBitsDirect_u32 );
 
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateSD( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateSD( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg reg = GetRegisterAndLoadHi(rt, ArmReg_R1);
-	GenerateStore( reg, base, offset, 0, 32, (void*)Write32Bits );
+	GenerateStore( address, reg, base, offset, 0, 32, set_branch_delay ? WriteBitsDirectBD_u32 : WriteBitsDirect_u32 );
 
 	reg = GetRegisterAndLoadLo(rt, ArmReg_R1);
-	GenerateStore( reg, base, offset + 4, 0, 32, (void*)Write32Bits );
+	GenerateStore( address, reg, base, offset + 4, 0, 32, set_branch_delay ? WriteBitsDirectBD_u32 : WriteBitsDirect_u32 );
 
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateSH( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateSH( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg reg = GetRegisterAndLoadLo(rt, ArmReg_R1);
-	GenerateStore( reg, base, offset, U16_TWIDDLE, 16, (void*)Write16Bits );
+	GenerateStore( address, reg, base, offset, U16_TWIDDLE, 16, set_branch_delay ? WriteBitsDirectBD_u16 : WriteBitsDirect_u16 );
 	return true;
 }
 
-bool CCodeGeneratorARM::GenerateSB( EN64Reg rt, EN64Reg base, s16 offset )
+bool CCodeGeneratorARM::GenerateSB( u32 address, bool set_branch_delay, EN64Reg rt, EN64Reg base, s16 offset )
 {
 	EArmReg reg = GetRegisterAndLoadLo(rt, ArmReg_R1);
-	GenerateStore( reg, base, offset, U8_TWIDDLE, 8, (void*)Write8Bits );
+	GenerateStore( address, reg, base, offset, U8_TWIDDLE, 8, set_branch_delay ? WriteBitsDirectBD_u8 : WriteBitsDirect_u8 );
 	return true;
 }
 

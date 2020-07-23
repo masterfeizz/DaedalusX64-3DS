@@ -139,23 +139,26 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 	private:
 				bool	GenerateCACHE( EN64Reg base, s16 offset, u32 cache_op );
 
-				void	GenerateStore( EArmReg arm_src, EN64Reg base, s16 offset, u8 twiddle, u8 bits, void* p_write_memory );
-				bool	GenerateSW(EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateSWC1( u32 ft, EN64Reg base, s16 offset );
-				bool	GenerateSDC1( u32 ft, EN64Reg base, s16 offset );
-				bool	GenerateSH( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateSD( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateSB( EN64Reg rt, EN64Reg base, s16 offset );
+				typedef u32 (*ReadMemoryFunction)( u32 address, u32 current_pc );
+				typedef void (*WriteMemoryFunction)( u32 address, u32 value, u32 current_pc );
+				
+				void	GenerateStore( u32 address, EArmReg arm_src, EN64Reg base, s16 offset, u8 twiddle, u8 bits, WriteMemoryFunction p_write_memory );
+				bool	GenerateSW(u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateSWC1( u32 address, bool branch_delay_slot, u32 ft, EN64Reg base, s16 offset );
+				bool	GenerateSDC1( u32 address, bool branch_delay_slot, u32 ft, EN64Reg base, s16 offset );
+				bool	GenerateSH( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateSD( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateSB( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
 
-				void	GenerateLoad( EArmReg arm_dest, EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, void* p_read_memory );
-				bool	GenerateLW( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateLD( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateLB( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateLBU( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateLH( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateLHU( EN64Reg rt, EN64Reg base, s16 offset );
-				bool	GenerateLWC1( u32 ft, EN64Reg base, s16 offset );
-				bool	GenerateLDC1( u32 ft, EN64Reg base, s16 offset );
+				void	GenerateLoad( u32 address, EArmReg arm_dest, EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, ReadMemoryFunction p_read_memory );
+				bool	GenerateLW( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateLD( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateLB( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateLBU( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateLH( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateLHU( u32 address, bool branch_delay_slot, EN64Reg rt, EN64Reg base, s16 offset );
+				bool	GenerateLWC1( u32 address, bool branch_delay_slot, u32 ft, EN64Reg base, s16 offset );
+				bool	GenerateLDC1( u32 address, bool branch_delay_slot, u32 ft, EN64Reg base, s16 offset );
 				void	GenerateLUI( EN64Reg rt, s16 immediate );
 
 				void	GenerateADDIU( EN64Reg rt, EN64Reg rs, s16 immediate );
