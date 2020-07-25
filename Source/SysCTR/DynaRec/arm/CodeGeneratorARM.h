@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "AssemblyWriterARM.h"
 #include "DynarecTargetARM.h"
 #include "DynaRec/TraceRecorder.h"
+#include "N64RegisterCacheARM.h"
+#include <stack>
 
 // XXXX For GenerateCompare_S/D
 #define FLAG_SWAP			0x100
@@ -38,7 +40,8 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 		CCodeGeneratorARM( CAssemblyBuffer * p_primary, CAssemblyBuffer * p_secondary );
 
 		virtual void				Initialise( u32 entry_address, u32 exit_address, u32 * hit_counter, const void * p_base, const SRegisterUsageInfo & register_usage );
-		virtual void				Finalise( ExceptionHandlerFn p_exception_handler_fn, const std::vector< CJumpLocation > & exception_handler_jumps );
+		void                        SetRegisterSpanList(const SRegisterUsageInfo& register_usage, bool loops_to_self);
+		virtual void				Finalise( ExceptionHandlerFn p_exception_handler_fn, const std::vector< CJumpLocation > & exception_handler_jumps, const std::vector< RegisterSnapshotHandle>& exception_handler_snapshots );
 
 		virtual void				UpdateRegisterCaching( u32 instruction_idx );
 
@@ -59,7 +62,11 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 		virtual CJumpLocation		ExecuteNativeFunction( CCodeLabel speed_hack, bool check_return );
 
 	private:
+				void                ExpireOldIntervals(u32 instruction_idx);
+				void                SpillAtInterval(const SRegisterSpan& live_span);
+				void                GetVar(EArmReg arm_reg, const u32* p_var);
 				void				SetVar( const u32 * p_var, u32 value );
+				void				SetVar(const u32* p_var, EArmReg reg);
 
 				EArmReg				GetRegisterNoLoad( EN64Reg n64_reg, u32 lo_hi_idx, EArmReg scratch_reg );
 				EArmReg				GetRegisterNoLoadLo( EN64Reg n64_reg, EArmReg scratch_reg )		{ return GetRegisterNoLoad( n64_reg, 0, scratch_reg ); }
@@ -69,6 +76,29 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				EArmReg				GetRegisterAndLoadLo( EN64Reg n64_reg, EArmReg scratch_reg )	{ return GetRegisterAndLoad( n64_reg, 0, scratch_reg ); }
 				EArmReg				GetRegisterAndLoadHi( EN64Reg n64_reg, EArmReg scratch_reg )	{ return GetRegisterAndLoad( n64_reg, 1, scratch_reg ); }
 
+				void                GetRegisterValue(EArmReg arm_reg, EN64Reg n64_reg, u32 lo_hi_idx);
+				void                LoadRegister( EArmReg arm_reg, EN64Reg n64_reg, u32 lo_hi_idx );
+				void                LoadRegisterLo( EArmReg arm_reg, EN64Reg n64_reg ) { LoadRegister(arm_reg, n64_reg, 0); }
+				void                LoadRegisterHi( EArmReg arm_reg, EN64Reg n64_reg ) { LoadRegister(arm_reg, n64_reg, 1); }
+				void                PrepareCachedRegister(EN64Reg n64_reg, u32 lo_hi_idx);
+				void				PrepareCachedRegisterLo(EN64Reg n64_reg) { PrepareCachedRegister(n64_reg, 0); }
+				void				PrepareCachedRegisterHi(EN64Reg n64_reg) { PrepareCachedRegister(n64_reg, 1); }
+				void                FlushRegister(CN64RegisterCacheARM& cache, EN64Reg n64_reg, u32 lo_hi_idx, bool invalidate);
+				void                FlushAllRegisters(CN64RegisterCacheARM& cache, bool invalidate);
+				void                RestoreAllRegisters(CN64RegisterCacheARM& current_cache, CN64RegisterCacheARM& new_cache);
+				void                UpdateRegister(EN64Reg n64_reg, EArmReg  arm_reg, bool options);
+				const CN64RegisterCacheARM& GetRegisterCacheFromHandle(RegisterSnapshotHandle snapshot) const;
+
+
+				void				StoreRegister(EN64Reg n64_reg, u32 lo_hi_idx, EArmReg arm_reg);
+				void				StoreRegisterLo(EN64Reg n64_reg, EArmReg arm_reg) { StoreRegister(n64_reg, 0, arm_reg); }
+				void				StoreRegisterHi(EN64Reg n64_reg, EArmReg arm_reg) { StoreRegister(n64_reg, 1, arm_reg); }
+
+				void				SetRegister64(EN64Reg n64_reg, s32 lo_value, s32 hi_value);
+
+				void				SetRegister32s(EN64Reg n64_reg, s32 value);
+
+				void				SetRegister(EN64Reg n64_reg, u32 lo_hi_idx, u32 value);
 				CJumpLocation		GenerateBranchAlways( CCodeLabel target );
 				CJumpLocation		GenerateBranchIfSet( const u32 * p_var, CCodeLabel target );
 				CJumpLocation		GenerateBranchIfNotSet( const u32 * p_var, CCodeLabel target );
@@ -78,18 +108,28 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 
 				void				GenerateGenericR4300( OpCode op_code, CPU_Instruction p_instruction );
 
-				void				GenerateExceptionHander( ExceptionHandlerFn p_exception_handler_fn, const std::vector< CJumpLocation > & exception_handler_jumps );
+				void				GenerateExceptionHander( ExceptionHandlerFn p_exception_handler_fn, const std::vector< CJumpLocation > & exception_handler_jumps, const std::vector< RegisterSnapshotHandle>& exception_handler_snapshots );
 
 				bool				mSpCachedInESI;		// Is sp cached in ESI?
 				u32					mSetSpPostUpdate;	// Set Sp base counter after this update
 
 				CAssemblyBuffer *	mpPrimary;
 				CAssemblyBuffer *	mpSecondary;
+				RegisterSpanList	mRegisterSpanList;
+				// For register allocation
+				RegisterSpanList	mActiveIntervals;
+				std::stack<EArmReg>	mAvailableRegisters;
+				CCodeLabel			mLoopTop;
+				bool				mUseFixedRegisterAllocation;
+				std::vector< CN64RegisterCacheARM >	mRegisterSnapshots;
+				CN64RegisterCacheARM	mRegisterCache;
+				bool mFloatCMPIsValid;
+				bool mMultIsValid;
 
 	private:
 				bool	GenerateCACHE( EN64Reg base, s16 offset, u32 cache_op );
 
-				void	GenerateStore( EN64Reg base, s16 offset, u8 twiddle, u8 bits, void* p_write_memory );
+				void	GenerateStore( EArmReg arm_src, EN64Reg base, s16 offset, u8 twiddle, u8 bits, void* p_write_memory );
 				bool	GenerateSW(EN64Reg rt, EN64Reg base, s16 offset );
 				bool	GenerateSWC1( u32 ft, EN64Reg base, s16 offset );
 				bool	GenerateSDC1( u32 ft, EN64Reg base, s16 offset );
@@ -97,7 +137,7 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				bool	GenerateSD( EN64Reg rt, EN64Reg base, s16 offset );
 				bool	GenerateSB( EN64Reg rt, EN64Reg base, s16 offset );
 
-				void	GenerateLoad( EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, void* p_read_memory );
+				void	GenerateLoad( EArmReg arm_dest, EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, void* p_read_memory );
 				bool	GenerateLW( EN64Reg rt, EN64Reg base, s16 offset );
 				bool	GenerateLD( EN64Reg rt, EN64Reg base, s16 offset );
 				bool	GenerateLB( EN64Reg rt, EN64Reg base, s16 offset );

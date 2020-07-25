@@ -28,7 +28,7 @@ void	CAssemblyWriterARM::TST(EArmReg rn, EArmReg rm)
 
 void	CAssemblyWriterARM::CMP_IMM(EArmReg rn, u8 imm)
 {
-	EmitDWORD(0xe3500000 | rn << 12 | imm);
+	EmitDWORD(0xe3500000 | rn << 16 | imm);
 }
 
 void	CAssemblyWriterARM::CMP(EArmReg rn, EArmReg rm)
@@ -111,6 +111,11 @@ void	CAssemblyWriterARM::XOR(EArmReg rd, EArmReg rn, EArmReg rm)
 	EmitDWORD(0xe0200000 | (rd << 12) | (rn << 16) | rm);
 }
 
+void	CAssemblyWriterARM::XOR_IMM(EArmReg rd, EArmReg rn, u8 imm)
+{
+	EmitDWORD(0xe2200000 | (rd << 12) | (rn << 16) | imm);
+}
+
 void	CAssemblyWriterARM::B(u16 offset, EArmCond cond)
 {
 	EmitDWORD(0x0a000000 | (cond << 28) | (offset >> 2));
@@ -167,6 +172,31 @@ void	CAssemblyWriterARM::LDRD(EArmReg rt, EArmReg rn, s16 offset)
 	EmitDWORD(0xe14000d0 | ((offset >= 0) << 23) | ( rn << 16 ) | ( rt << 12 ) | ((abs(offset & 0xf0)) << 4) | (abs(offset) & 0xf));
 }
 
+void	CAssemblyWriterARM::LDR_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe7100000 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
+void	CAssemblyWriterARM::LDRB_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe7500000 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
+void	CAssemblyWriterARM::LDRSB_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe11000d0 | (1 << 23) | (rn << 16) | (rt << 12) | rm);
+}
+
+void	CAssemblyWriterARM::LDRSH_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe11000f0 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
+void	CAssemblyWriterARM::LDRH_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe11000b0 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
 void	CAssemblyWriterARM::STR(EArmReg rt, EArmReg rn, s16 offset)
 {
 	EmitDWORD(0xe5000000 | ((offset >= 0) << 23) | ( rn << 16 ) | ( rt << 12 ) | (offset & 0xfff));
@@ -185,6 +215,21 @@ void	CAssemblyWriterARM::STRB(EArmReg rt, EArmReg rn, s16 offset)
 void	CAssemblyWriterARM::STRD(EArmReg rt, EArmReg rn, s16 offset)
 {
 	EmitDWORD(0xe14000f0 | ((offset >= 0) << 23) | ( rn << 16 ) | ( rt << 12 ) | ((abs(offset) & 0xf0) << 4) | (abs(offset) & 0xf));
+}
+
+void	CAssemblyWriterARM::STR_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe7000000 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
+void	CAssemblyWriterARM::STRH_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe10000b0 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
+}
+
+void	CAssemblyWriterARM::STRB_REG(EArmReg rt, EArmReg rn, EArmReg rm)
+{
+	EmitDWORD(0xe7400000 | (1 << 23) | (rn << 16) | (rt << 12) | (rm));
 }
 
 void	CAssemblyWriterARM::MOV(EArmReg rd, EArmReg rm)
