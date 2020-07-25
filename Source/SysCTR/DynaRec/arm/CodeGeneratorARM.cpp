@@ -57,7 +57,7 @@ static const EArmReg gRegistersToUseForCaching[] = {
 	ArmReg_R11,
 	// ArmReg_R12, this holds a pointer to gCpuState
 	// ArmReg_R13, this is the stack pointer
-	// ArmReg_R14, this is the link register
+	 ArmReg_R14,// this is the link register
 	// ArmReg_R15, this is the PC
 };
 
