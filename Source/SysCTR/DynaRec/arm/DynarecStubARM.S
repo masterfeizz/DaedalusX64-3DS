@@ -100,7 +100,7 @@ _DirectExitCheckCheckCount:
 	mov		r12, r5
 	ldr		r0, [r12, #_StuffToDo]		// StuffToDo
 	cmp		r0, #0
-	popne	{r4-r11, pc}		// Exit the DynaRec
+	popne	{r4-r12, pc}		// Exit the DynaRec
 	bx		lr					// Return back to caller
 
 #######################################################################################
@@ -120,7 +120,7 @@ _IndirectExitCheck:
 
 	ldr		r0, [r6, #_StuffToDo]	//  StuffToDo
 	cmp		r0, #0
-	popne {r4-r11,pc}				// Exit the DynaRec
+	popne {r4-r12,pc}				// Exit the DynaRec
 
 	mov		r0, r4					//	 p_map
 	mov		r1, r5					// exit_pc
@@ -129,13 +129,13 @@ _IndirectExitCheck:
 
 	# r0 holds pointer to indirect target. If it's 0, it means it's not compiled yet
 	cmp		r0, #0
-	popeq   {r4-r11,pc} 			// Exit the DynaRec
+	popeq   {r4-r12,pc} 			// Exit the DynaRec
 	mov     r12,r6					// Restore the CPUState pointer
 	bx		r0						// branch to the looked up fragment
 
 _ReturnFromDynaRecAndHandleException:
 	bl    HandleException_extern
-	pop   {r4-r11,pc}
+	pop   {r4-r12,pc}
 	
 .macro READ_BITS	function, load_instruction
 \function:
@@ -148,13 +148,10 @@ _ReturnFromDynaRecAndHandleException:
 	str		r1, [r12,#_CurrentPC] 	// CurrentPC
 	
 	// execute memread function
-	// Apparently, you cannot move lr to another register, so push it onto the stack (see: white Banjo in Banjo-Kazooie)
-	// NOTE: Loads/Stores are recursive in Banjo-Kazooie?
-	// We will overflow the stack here if we were to push 1 more register with lr
 	mov		r5, r12
-	push	{lr}
+	mov		r6, lr
 	blx		r2
-	pop     {lr}
+	mov		lr, r6
 	mov		r12, r5
 	
 	// check exceptions
@@ -184,9 +181,9 @@ _ReturnFromDynaRecAndHandleException:
 	
 	// execute memread function
 	mov		r5, r12
-	push	{lr}
+	mov		r6, lr
 	blx		r2
-	pop     {lr}
+	mov		lr, r6
 	mov		r12, r5
 	
 	// check exceptions
@@ -222,9 +219,9 @@ _ReturnFromDynaRecAndHandleException:
 	
 	// do the write 
 	mov  r5, r12
-	push {lr}
+	mov  r6, lr
 	bl		\store_func
-	pop  {lr}
+	mov  lr, r6
 	mov	  r12, r5
 	
 	// check exceptions
@@ -244,9 +241,9 @@ _ReturnFromDynaRecAndHandleException:
 	
 	// do the write 
 	mov  r5, r12
-	push {lr}
+	mov  r6, lr
 	bl		\store_func
-	pop  {lr}
+	mov  lr, r6
 	mov	  r12, r5
 	
 	
@@ -272,7 +269,7 @@ _ReturnFromDynaRecAndHandleException:
 	WRITE_BITS_BD _WriteBitsDirectBD_u32, Write32BitsForDynaRec
 	
 _EnterDynaRec:
-    push {r4-r11, lr}
+    push {r4-r12, lr}
     mov r12, r1
     mov r10, r2
 	mov r9,  r3

@@ -776,17 +776,17 @@ CJumpLocation CAssemblyWriterARM::BX_IMM( CCodeLabel target, EArmCond cond )
 
 void CAssemblyWriterARM::CALL( CCodeLabel target )
 {
-	PUSH(0x1000); //R12
+	PUSH(0x5000); //R12, LR
 
 	MOV32(ArmReg_R4, target.GetTargetU32());
 	BLX(ArmReg_R4);
 
-	POP(0x1000); //R12
+	POP(0x5000); //R12, LR
 }
 
 void CAssemblyWriterARM::RET()
 {
-	POP(0x8ff0);
+	POP(0x9ff0);
 	InsertLiteralPool(false);
 }
 
