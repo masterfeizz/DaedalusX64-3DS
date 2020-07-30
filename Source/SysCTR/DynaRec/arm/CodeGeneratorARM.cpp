@@ -1235,8 +1235,8 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 
 				case SpecOp_SLT:	GenerateSLT( rd, rs, rt, false );	handled = true; break;
 				case SpecOp_SLTU:	GenerateSLT( rd, rs, rt, true );	handled = true; break;
-				case SpecOp_JR:		GenerateJR( rs, p_branch, p_branch_jump );	handled = true; exception = true; break;
-				case SpecOp_JALR:	GenerateJALR( rs, rd, address, p_branch, p_branch_jump );	handled = true; exception = true; break;
+				case SpecOp_JR:		GenerateJR( rs, p_branch, p_branch_jump );	handled = true; break;
+				case SpecOp_JALR:	GenerateJALR( rs, rd, address, p_branch, p_branch_jump );	handled = true; break;
 
 				default: break;
 			}
@@ -1858,24 +1858,22 @@ void CCodeGeneratorARM::GenerateJAL( u32 address )
 
 void CCodeGeneratorARM::GenerateJR( EN64Reg rs, const SBranchDetails * p_branch, CJumpLocation * p_branch_jump )
 {
-	SetVar( &gCPUState.Delay, DO_DELAY );
-
 	EArmReg reg = GetRegisterAndLoadLo(rs, ArmReg_R0);
+	MOV32(ArmReg_R1, p_branch->TargetAddress);
 	SetVar(&gCPUState.TargetPC, reg);
-
-	*p_branch_jump = BX_IMM(CCodeLabel(nullptr), AL);
+	CMP(reg, ArmReg_R1);
+	*p_branch_jump = BX_IMM(CCodeLabel(nullptr), NE);
 }
 
 void CCodeGeneratorARM::GenerateJALR( EN64Reg rs, EN64Reg rd, u32 address, const SBranchDetails * p_branch, CJumpLocation * p_branch_jump )
 {
 	SetRegister32s(rd, address + 8);
-
-	SetVar( &gCPUState.Delay, DO_DELAY );
-
+	
 	EArmReg reg = GetRegisterAndLoadLo(rs, ArmReg_R0);
+	MOV32(ArmReg_R1, p_branch->TargetAddress);
 	SetVar(&gCPUState.TargetPC, reg);
-
-	*p_branch_jump = BX_IMM(CCodeLabel(nullptr), AL);
+	CMP(reg, ArmReg_R1);
+	*p_branch_jump = BX_IMM(CCodeLabel(nullptr), NE);
 }
 
 void CCodeGeneratorARM::GenerateADDIU( EN64Reg rt, EN64Reg rs, s16 immediate )
