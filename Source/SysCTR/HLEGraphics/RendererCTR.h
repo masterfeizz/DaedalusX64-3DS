@@ -4,7 +4,7 @@
 #include <set>
 
 #include "HLEGraphics/BaseRenderer.h"
-#include "SysVita/HLEGraphics/BlendModes.h"
+#include "SysCTR/HLEGraphics/BlendModes.h"
 
 class CBlendStates;
 

@@ -71,11 +71,12 @@ struct DaedalusVtx
 
 	}
 
-    v2		Texture {};
+	v3		Position {};
 	c32		Colour {};
-    v3		Position {};
+    v2		Texture {};
+    v2 		Padding {};
 };
 
-DAEDALUS_STATIC_ASSERT( sizeof(DaedalusVtx) == 24 );
+DAEDALUS_STATIC_ASSERT( sizeof(DaedalusVtx) == 32 );
 
 #endif // HLEGRAPHICS_DAEDALUSVTX_H_

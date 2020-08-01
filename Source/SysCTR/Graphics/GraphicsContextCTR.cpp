@@ -187,9 +187,7 @@ void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 	}
 
 	UI::DrawInGameMenu();
-
-	if( gCleanSceneEnabled )
-		ClearToBlack();
+	ClearToBlack();
 }
 
 void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)

@@ -30,7 +30,6 @@
 #include "Utility/ROMFile.h"
 #include "Utility/Timer.h"
 
-extern uint8_t aspectRatio;
 extern float gCurrentFramerate;
 extern EFrameskipValue gFrameskipValue;
 extern RomInfo g_ROM;
@@ -77,19 +76,18 @@ static void DrawSaveStatePage()
 	{
 		sprintf(buttonString, "Save slot: %i", i);
 
-		if(ImGui::ColoredButton(buttonString, SaveStateExists(i) ? 0.15f : 0.40f, ImVec2(buttonWidth, 30)))
+		if(ImGui::ColoredButton(buttonString, SaveStateExists(i) ? 0.16f : 0.40f, ImVec2(buttonWidth, 30)))
 		{
 			ExecSaveState(i);
 		}
 	}
 
-	if(ImGui::Button("Cancel", ImVec2(buttonWidth, 30))) currentPage = 0;
+	if(ImGui::ColoredButton("Cancel", 0, ImVec2(buttonWidth, 30))) currentPage = 0;
 
 	ImGui::End();
 	ImGui::Render();
 
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-	
 }
 
 static void DrawLoadStatePage()
@@ -108,19 +106,25 @@ static void DrawLoadStatePage()
 	{
 		sprintf(buttonString, "Load slot: %i", i);
 
-		if(ImGui::ColoredButton(buttonString, SaveStateExists(i) ? 0.15f : 0.40f, ImVec2(buttonWidth, 30)))
+		if( SaveStateExists(i) )
 		{
-			LoadSaveState(i);
+			if(ImGui::ColoredButton(buttonString, SaveStateExists(i) ? 0.40f : 0.0f, ImVec2(buttonWidth, 30)))
+			{
+				LoadSaveState(i);
+			}
+		}
+		else
+		{
+			ImGui::Button(buttonString, ImVec2(buttonWidth, 30));
 		}
 	}
 
-	if(ImGui::Button("Cancel", ImVec2(buttonWidth, 30))) currentPage = 0;
+	if(ImGui::ColoredButton("Cancel", 0, ImVec2(buttonWidth, 30))) currentPage = 0;
 
 	ImGui::End();
 	ImGui::Render();
 
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-	
 }
 
 static void HelpMarker(const char* desc)
@@ -247,7 +251,7 @@ bool UI::DrawOptionsPage(RomID mRomID)
 	{
 		if(ImGui::BeginCombo("Configuration", CInputManager::Get()->GetConfigurationName(romPreferences.ControllerIndex)) )
 		{
-			for( int i = 0; i < CInputManager::Get()->GetNumConfigurations(); i++ )
+			for( unsigned i = 0; i < CInputManager::Get()->GetNumConfigurations(); i++ )
 			{
 				const bool isSelected = (romPreferences.ControllerIndex == i);
 
@@ -263,7 +267,6 @@ bool UI::DrawOptionsPage(RomID mRomID)
 		ImGui::EndTabItem();
 	}
 	
-
 	ImGui::EndTabBar();
 	ImGui::Spacing();
 	ImGui::Separator();
@@ -306,7 +309,6 @@ static void showFPS()
 	ImGui::Text("FPS: %.2f", gCurrentFramerate);
 	ImGui::End();
 	ImGui::PopStyleVar();
-
 }
 
 static void DrawMainPage()
@@ -358,7 +360,7 @@ static void DrawMainPage()
 	ImGui::End();
 
 	showFPS();
-	
+
 	ImGui::Render();
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 }
