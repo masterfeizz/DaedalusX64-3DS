@@ -36,8 +36,6 @@
 #include "Utility/ROMFile.h"
 #include "Utility/MemoryCTR.h"
 
-static aptHookCookie _hookCookie;
-
 bool isN3DS = false;
 bool shouldQuit = false;
 
@@ -60,19 +58,9 @@ void log2file(const char *format, ...) {
 }
 #endif
 
-static void _AptEventHook(APT_HookType type, void* param)
-{
-	switch (type)
-	{
-		case APTHOOK_ONEXIT: CPU_Halt("Exiting"); shouldQuit = true; break;
-		default: break;
-	}
-}
-
 static void Initialize()
 {
 	_InitializeSvcHack();
-	aptHook(&_hookCookie, _AptEventHook, NULL);
 	romfsInit();
 	
 	APT_CheckNew3DS(&isN3DS);
@@ -94,7 +82,11 @@ static void Initialize()
 
 void HandleEndOfFrame()
 {
-	aptMainLoop();
+	shouldQuit = !aptMainLoop();
+	if (shouldQuit)
+	{
+		CPU_Halt("Exiting");
+	}
 }
 
 extern u32 __ctru_heap_size;
