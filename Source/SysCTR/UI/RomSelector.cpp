@@ -113,7 +113,6 @@ std::string UI::DrawRomSelector()
 
 		pglSwapBuffers();
 		UI::ClearSecondScreen(GFX_TOP);
-		gfxSwapBuffersGpu();
 
 		while(aptMainLoop())
 		{
@@ -149,7 +148,6 @@ std::string UI::DrawRomSelector()
 
 		pglSwapBuffers();
 		UI::ClearSecondScreen(GFX_TOP);
-		gfxSwapBuffersGpu();
 
 		if(hidKeysDown() & KEY_A)
 			return roms.at(cursor).mFilename;
