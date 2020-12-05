@@ -75,8 +75,10 @@ static void AudioInit()
 
 	waveBuf[0].data_vaddr = linearAlloc(CTR_NUM_SAMPLES * 4);
 	waveBuf[0].nsamples = CTR_NUM_SAMPLES;
+	waveBuf[0].status = 0;
 	waveBuf[1].data_vaddr = linearAlloc(CTR_NUM_SAMPLES * 4);
 	waveBuf[1].nsamples = CTR_NUM_SAMPLES;
+	waveBuf[1].status = 0;
 
 	memset(waveBuf[0].data_pcm16, 0, CTR_NUM_SAMPLES * 4);
 	memset(waveBuf[1].data_pcm16, 0, CTR_NUM_SAMPLES * 4);
