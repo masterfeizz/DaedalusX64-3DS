@@ -9,8 +9,10 @@ To install Daedalus to your 3DS, download the latest release from the Releases p
 Next, extract the data.zip to the root of your sd card. Place your ROM files in sdmc:/3ds/DaedalusX64/Roms/ and they will automatically appear in Daedalus.
  
 ## Credits
- 
+
+- cmf028: Major contributer of the ARM DynaRec code
 - rinnegatamante, xerpi: Porting DaedalusX64 to the Playstation Vita
+- TheFloW: Contributions to the DynaRec code
 - kreationz, salvy6735, Corn, Chilly Willy: Original DaedalusX64 code
 - Wally: Optimizations, improvements and ports
 - z2442: Compilation improvements and updating, optimizations
