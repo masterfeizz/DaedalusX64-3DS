@@ -351,7 +351,8 @@ if (CTR_RELEASE)
 
 	target_link_libraries(${PROJECT_NAME}.elf
 		daedalus
-		picaGL
+		-limgui
+		-lpicaGL
 		-lctru
 		-lm
 	)

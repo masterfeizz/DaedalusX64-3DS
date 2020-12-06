@@ -294,11 +294,11 @@ void CNativeTexture::SetData( void * data, void * palette )
 
 		switch (mTextureFormat)
 		{
-/*		case TexFmt_5650:
+		case TexFmt_5650:
 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA,
 						  mCorrectedWidth, mCorrectedHeight,
-						  0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, data );
-			break;*/
+						  0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data );
+			break;
 		case TexFmt_5551:
 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA,
 						  mCorrectedWidth, mCorrectedHeight,

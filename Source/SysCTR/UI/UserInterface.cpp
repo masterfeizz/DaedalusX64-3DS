@@ -2,69 +2,25 @@
 #include <GL/picaGL.h>
 #include <stdio.h>
 
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
-
 #include "UserInterface.h"
-
-static stbtt_bakedchar charData[96];
-
-static GLuint fontTex;
-
-static uint32_t _keysDown = 0;
-static uint32_t _keysHeld = 0;
-
-static uint32_t GetStringWidth(const char* text)
-{
-	uint32_t stringWidth = 0;
-
-	while (*text) 
-	{
-		if (*text >= 32 && *text < 128)
-		{
-			stbtt_bakedchar *b = charData + (*text-32);
-			stringWidth += b->xadvance;
-
-			if(*text == ' ')
-				stringWidth += 3;
-		}
-		++text;
-	}
-
-	return stringWidth;
-}
 
 //Loads the font
 void UI::Initialize()
 {
-	uint8_t* ttfBuffer = new uint8_t[1<<20];
-	uint8_t* bitmap_u8 = new uint8_t[256*256];
-	uint32_t* bitmap_u32 = new uint32_t[256*256];
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO &io = ImGui::GetIO();
 
-	FILE *fontFile = fopen("romfs:/kenvector_future.ttf", "rb");
+	io.Fonts->AddFontFromFileTTF("romfs:/Roboto-Medium.ttf", 14);
+	// Setup Platform/Renderer bindings
+	ImGui_Impl3DS_Init();
+	ImGui_ImplOpenGL2_Init();
 
-	if(fontFile == NULL)
-		exit(0);
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
 
-	fread(ttfBuffer, 1, 1<<20, fontFile);
-
-	stbtt_BakeFontBitmap(ttfBuffer,0, 14.0, bitmap_u8, 256, 256, 32, 96, charData); // no guarantee this fits!
-
-	for(uint32_t i =0; i < 256 * 256; i++)
-	{
-		bitmap_u32[i] = (0x00ffffff) | (bitmap_u8[i] << 24);
-	}
-
-	glGenTextures(1, &fontTex);
-	glBindTexture(GL_TEXTURE_2D, fontTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256,256, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap_u32);
-
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	delete [] ttfBuffer;
-	delete [] bitmap_u8;
-	delete [] bitmap_u32;
+	ImGui::GetStyle().WindowRounding = 0.0f;
 }
 
 void UI::RestoreRenderState()
@@ -91,122 +47,4 @@ void UI::RestoreRenderState()
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
-	_keysDown = hidKeysHeld() ^ _keysHeld;
-	_keysHeld = hidKeysHeld();
-}
-
-void UI::ClearSecondScreen(unsigned screen)
-{
-	pglSelectScreen(screen, GFX_LEFT);
-	glClear(GL_COLOR_BUFFER_BIT);
-	pglSwapBuffers();
-	pglSelectScreen(!screen, GFX_LEFT);
-}
-
-void UI::DrawHeader(const char *title)
-{
-	glDisable(GL_TEXTURE_2D);
-
-	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(0.1f, 0.6f, 0.5f);
-		glVertex2f(0, 0);
-		glVertex2f(320, 0);
-		glVertex2f(0, 12);
-		glVertex2f(320, 12);
-	glEnd();
-
-	glColor3f(0.9f, 0.9f, 0.9f);
-	UI::DrawText(4, 10, title);
-}
-
-bool UI::DrawButton(float x, float y, float width, float height, const char *text)
-{
-	touchPosition touch;
-
-	glDisable(GL_TEXTURE_2D);
-
-	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(0.15f, 0.5f, 0.75f);
-		glVertex2f(x, y);
-		glVertex2f(x+width, y);
-		glVertex2f(x, y+height);
-		glVertex2f(x+width, y+height);
-	glEnd();
-
-	glColor3f(0.9f, 0.9f, 0.9f);
-
-	float tY = y + (height/2) + 6;
-	float tX = x + (width/2) - (GetStringWidth(text) / 2);
-
-	UI::DrawText(tX, tY, text);
-
-	hidTouchRead(&touch);
-
-	if(_keysDown & KEY_TOUCH)
-	{
-		if(touch.px > x && touch.px < (x + width) && touch.py > y && touch.py < (y + height))
-			return true;
-	}
-
-	return false;
-}
-
-bool UI::DrawToggle(float x, float y, float width, float height, const char *text, bool isToggled)
-{
-	touchPosition touch;
-
-	glDisable(GL_TEXTURE_2D);
-
-	if(isToggled)
-		glColor3f(0.1f, 0.6f, 0.5f);
-	else
-		glColor3f(0.75f, 0.2f, 0.15f);
-
-	glBegin(GL_TRIANGLE_STRIP);
-		glVertex2f(x, y);
-		glVertex2f(x+width, y);
-		glVertex2f(x, y+height);
-		glVertex2f(x+width, y+height);
-	glEnd();
-
-	glColor3f(0.9f, 0.9f, 0.9f);
-
-	float tY = y + (height/2) + 6;
-	float tX = x + (width/2) - (GetStringWidth(text) / 2);
-
-	UI::DrawText(tX, tY, text);
-
-	hidTouchRead(&touch);
-
-	if(_keysDown & KEY_TOUCH)
-	{
-		if(touch.px > x && touch.px < (x + width) && touch.py > y && touch.py < (y + height))
-			return true;
-	}
-
-	return false;
-}
-
-void UI::DrawText(float x, float y, const char *text)
-{
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, fontTex);
-
-	while (*text) 
-	{
-		if (*text >= 32 && *text < 128)
-		{
-			stbtt_aligned_quad q;
-			stbtt_GetBakedQuad(charData, 256, 256, *text-32, &x, &y, &q ,1);
-
-			glBegin(GL_TRIANGLE_STRIP);
-			glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,q.y0);
-			glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,q.y0);
-			glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,q.y1);
-			glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,q.y1);
-			glEnd();
-		}
-		++text;
-	}
 }
