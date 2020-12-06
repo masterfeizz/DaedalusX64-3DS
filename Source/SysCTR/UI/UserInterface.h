@@ -1,13 +1,11 @@
 #pragma once
 #include <stdint.h>
+#include <imgui.h>
+#include <imgui_impl_3ds.h>
+#include <imgui_impl_opengl2.h>
+
 namespace UI
 {
 	void Initialize();
 	void RestoreRenderState();
-	void ClearSecondScreen(unsigned screen);
-	void DrawHeader(const char *title);
-
-	void DrawText(float x, float y, const char *text);
-	bool DrawButton(float x, float y, float width, float height, const char *text);
-	bool DrawToggle(float x, float y, float width, float height, const char *text, bool isToggled);
 }

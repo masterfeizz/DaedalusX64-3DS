@@ -133,6 +133,7 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				bool				mUseFixedRegisterAllocation;
 				std::vector< CN64RegisterCacheARM >	mRegisterSnapshots;
 				CN64RegisterCacheARM	mRegisterCache;
+				bool mQuickLoad;
 				bool mFloatCMPIsValid;
 				bool mMultIsValid;
 

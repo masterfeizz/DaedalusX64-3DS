@@ -1126,6 +1126,8 @@ CJumpLocation	CCodeGeneratorARM::GenerateOpCode( const STraceEntry& ti, bool bra
 		SetVar(&gCPUState.Delay, EXEC_DELAY);
 	}
 
+	mQuickLoad = ti.Usage.Access8000;
+
 	const EN64Reg	rs = EN64Reg( op_code.rs );
 	const EN64Reg	rt = EN64Reg( op_code.rt );
 	const EN64Reg	rd = EN64Reg( op_code.rd );
@@ -1449,40 +1451,32 @@ CJumpLocation CCodeGeneratorARM::ExecuteNativeFunction( CCodeLabel speed_hack, b
 //Helper function, loads into given register
 inline void CCodeGeneratorARM::GenerateLoad( u32 current_pc, EArmReg arm_dest, EN64Reg base, s16 offset, u8 twiddle, u8 bits, bool is_signed, ReadMemoryFunction p_read_memory )
 {
-	if (gDynarecStackOptimisation && base == N64Reg_SP)
+	if ((gDynarecStackOptimisation && base == N64Reg_SP) || (gMemoryAccessOptimisation && mQuickLoad))
 	{
-		offset = offset ^ twiddle;
-
 		EArmReg reg_base = GetRegisterAndLoadLo(base, ArmReg_R0);
-
-		ADD(ArmReg_R1, reg_base, gMemoryBaseReg);
-
-		if(abs(offset) >> 8)
+		EArmReg load_reg = reg_base;
+		if (offset != 0)
 		{
-			if(offset > 0)
-			{
-				ADD_IMM(ArmReg_R1, ArmReg_R1, abs(offset) >> 8, 0xC);
-				offset = abs(offset) & 0xFF;
-			}
-			else
-			{
-				SUB_IMM(ArmReg_R1, ArmReg_R1, abs(offset) >> 8, 0xC);
-				offset = -(abs(offset) & 0xFF);
-			}
+			ADD_IMM(ArmReg_R0, reg_base, offset, ArmReg_R1);
+			load_reg = ArmReg_R0;
+		}
+		
+		if (twiddle != 0 )
+		{
+			XOR_IMM(ArmReg_R0, load_reg, twiddle);
+			load_reg = ArmReg_R0;
 		}
 
 		switch(bits)
 		{
-			case 32:	LDR(arm_dest, ArmReg_R1, offset); break;
+			case 32:	LDR_REG(arm_dest, load_reg, gMemoryBaseReg); break;
 
-			case 16:	if(is_signed)	{ LDRSH(arm_dest, ArmReg_R1, offset); }
-						else			{ LDRH (arm_dest, ArmReg_R1, offset); } break; 
+			case 16:	if(is_signed)	{ LDRSH_REG(arm_dest, load_reg, gMemoryBaseReg); }
+						else			{ LDRH_REG(arm_dest, load_reg, gMemoryBaseReg); } break;
 
-			case 8:		if(is_signed)	{ LDRSB(arm_dest, ArmReg_R1, offset); }
-						else			{ LDRB (arm_dest, ArmReg_R1, offset); } break; 
+			case 8:		if(is_signed)	{ LDRSB_REG(arm_dest, load_reg, gMemoryBaseReg); }
+						else			{ LDRB_REG(arm_dest, load_reg, gMemoryBaseReg); } break;
 		}
-
-		
 	}
 	else
 	{	
@@ -1666,33 +1660,28 @@ void CCodeGeneratorARM::GenerateLUI( EN64Reg rt, s16 immediate )
 //Helper function, stores register R1 into memory
 inline void CCodeGeneratorARM::GenerateStore(u32 address, EArmReg arm_src, EN64Reg base, s16 offset, u8 twiddle, u8 bits, WriteMemoryFunction p_write_memory )
 {
-	if (gDynarecStackOptimisation && base == N64Reg_SP)
+	if ((gDynarecStackOptimisation && base == N64Reg_SP) || (gMemoryAccessOptimisation && mQuickLoad))
 	{
-		offset = offset ^ twiddle;
-
 		EArmReg reg_base = GetRegisterAndLoadLo(base, ArmReg_R0);
+		EArmReg store_reg = reg_base;
 
-		ADD(ArmReg_R0, reg_base, gMemoryBaseReg);
-
-		if(abs(offset) >> 8)
+		if (offset != 0)
 		{
-			if(offset > 0)
-			{
-				ADD_IMM(ArmReg_R0, ArmReg_R0, abs(offset) >> 8, 0xC);
-				offset = abs(offset) & 0xFF;
-			}
-			else
-			{
-				SUB_IMM(ArmReg_R0, ArmReg_R0, abs(offset) >> 8, 0xC);
-				offset = -(abs(offset) & 0xFF);
-			}
+			ADD_IMM(ArmReg_R0, store_reg, offset, ArmReg_R2);
+			store_reg = ArmReg_R0;
 		}
-
+		
+		if (twiddle != 0)
+		{
+			XOR_IMM(ArmReg_R0, store_reg, twiddle);
+			store_reg = ArmReg_R0;
+		}
+		
 		switch(bits)
 		{
-			case 32:	STR (arm_src, ArmReg_R0, offset); break;
-			case 16:	STRH(arm_src, ArmReg_R0, offset); break; 
-			case 8:		STRB(arm_src, ArmReg_R0, offset); break; 
+			case 32:	STR_REG(arm_src, store_reg, gMemoryBaseReg); break;
+			case 16:	STRH_REG(arm_src, store_reg, gMemoryBaseReg); break; 
+			case 8:		STRB_REG(arm_src, store_reg, gMemoryBaseReg); break; 
 		}
 	}
 	else

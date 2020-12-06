@@ -133,6 +133,9 @@ void IGraphicsContext::ClearAllSurfaces()
 
 void IGraphicsContext::ClearToBlack()
 {
+	glViewport(0,0,400,240);
+	glDisable(GL_SCISSOR_TEST);
+
 	glDepthMask(GL_TRUE);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClearDepth( 1.0f );
@@ -160,8 +163,16 @@ void IGraphicsContext::ClearColBufferAndDepth(const c32 & colour)
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 }
 
+static bool newFrame = true;
+
 void IGraphicsContext::BeginFrame()
 {
+	if(newFrame)
+	{
+		ClearToBlack();
+		newFrame = false;
+	}
+
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -179,14 +190,14 @@ void IGraphicsContext::EndFrame()
 void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 {
 	pglSwapBuffers();
-	UI::DrawInGameMenu();
-
-	ClearToBlack();
 
 	gVertexBuffer = gVertexBufferPtr;
 	gColorBuffer = gColorBufferPtr;
 	gTexCoordBuffer = gTexCoordBufferPtr;
 	gVertexCount = 0;
+	newFrame = true;
+
+	UI::DrawInGameMenu();
 }
 
 void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)

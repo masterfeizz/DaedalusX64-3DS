@@ -1,4 +1,5 @@
 #include "UserInterface.h"
+#include "InGameMenu.h"
 #include "RomSelector.h"
 
 #include <3ds.h>
@@ -20,6 +21,8 @@
 #include "Utility/IO.h"
 #include "Utility/Preferences.h"
 #include "Utility/ROMFile.h"
+
+#include "Graphics/NativeTexture.h"
 
 #define DAEDALUS_CTR_PATH(p)	"sdmc:/3ds/DaedalusX64/" p
 
@@ -96,23 +99,28 @@ static std::vector<SRomInfo> PopulateRomList()
 	return roms;
 }
 
+static bool GetRomNameForList(void* data, int idx, const char** out_text)
+{
+	std::vector<SRomInfo> *roms = (std::vector<SRomInfo>*)data;
+	*out_text = roms->at(idx).mSettings.GameName.c_str();
+
+	return true;
+}
+
 std::string UI::DrawRomSelector()
 {
-	int cursor = 0, scroll = 0;
+	static int currentItem = 0;
 
-	std::vector<SRomInfo> roms = PopulateRomList();	
-	
-	UI::RestoreRenderState();
+	bool configure = false;
+	bool selected = false;
+
+	std::vector<SRomInfo> roms = PopulateRomList();
 
 	if(roms.empty())
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		DrawText( 4, 12, "No ROMs found!");
-
-		pglSwapBuffers();
-		UI::ClearSecondScreen(GFX_TOP);
+		
 
 		while(aptMainLoop())
 		{
@@ -123,47 +131,89 @@ std::string UI::DrawRomSelector()
 		}
 	}
 
+	bool selection_changed = true;
 
-	while(aptMainLoop())
+	while(aptMainLoop() && !selected)
 	{
 
+		gspWaitForVBlank();
 		hidScanInput();
 
+		pglSelectScreen(GFX_BOTTOM, GFX_LEFT);
+
+		glDisable(GL_SCISSOR_TEST);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+		ImGui_Impl3DS_NewFrame(GFX_BOTTOM);
+		
+		ImGui::SetNextWindowPos(  ImVec2(0, 0) );
+		ImGui::SetNextWindowSize( ImVec2(320, 240) );
+		ImGui::Begin("roms list", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar );
 
-		for(int i = 0; i < roms.size(); i++)
-		{
-			if(cursor == i)
-			{
-				glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-				DrawText( 4, 24 + ((i - scroll) * 10), roms.at(i).mSettings.GameName.c_str());
-				glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-			}
-			else
-				DrawText( 4, 24 + ((i - scroll) * 10), roms.at(i).mSettings.GameName.c_str());
-		}
+		ImGui::SetNextItemWidth(-1);
+		if(ImGui::ListBox("Roms", &currentItem, GetRomNameForList, (void*)&roms, roms.size(), 10)) selection_changed = true;
 
-		UI::DrawHeader("Rom Selector");
+		if( ImGui::Button("Configure", ImVec2(150, 32)) ) configure = true;
+		ImGui::SameLine(0, 4);
+
+		ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0xff60ae27));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor(0xff71cc2e));
+		if( ImGui::Button("Launch", ImVec2(150, 32)) ) selected = true;
+		ImGui::PopStyleColor(2);
+
+		ImGui::End();
+		ImGui::Render();
+		ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
 		pglSwapBuffers();
-		UI::ClearSecondScreen(GFX_TOP);
 
-		if(hidKeysDown() & KEY_A)
-			return roms.at(cursor).mFilename;
+		//Draw top screen
+		if(selection_changed)
+		{
+			CRefPtr<CNativeTexture>	previewTexture = NULL;
 
-		if((hidKeysDown() & KEY_DOWN) && cursor != roms.size() - 1)
-			cursor++;
+			IO::Filename preview_filename;
+			IO::Path::Combine(preview_filename, DAEDALUS_CTR_PATH("Resources/Preview/"), roms.at(currentItem).mSettings.Preview.c_str() );
 
-		if((hidKeysDown() & KEY_UP) && cursor != 0)
-			cursor--;
+			previewTexture = CNativeTexture::CreateFromPng( preview_filename, TexFmt_5650 );
 
-		if((cursor - scroll) > 21)
-			scroll++;
+			pglSelectScreen(GFX_TOP, GFX_LEFT);
+			glDisable(GL_SCISSOR_TEST);
+			glClear(GL_COLOR_BUFFER_BIT);
 
-		if((cursor - scroll) < 0)
-			scroll--;
+			ImGui_Impl3DS_NewFrame(GFX_TOP);
+		
+			ImGui::SetNextWindowPos(  ImVec2(0, 0) );
+			ImGui::SetNextWindowSize( ImVec2(400, 240) );
+			ImGui::Begin("Rom Selection", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse );
+
+			ImGui::Text("Game Name: %s", roms.at(currentItem).mSettings.GameName.c_str());
+			if(previewTexture)
+				ImGui::Image((void*)(intptr_t)previewTexture->GetTextureId(), ImVec2(previewTexture->GetWidth(),previewTexture->GetHeight()), ImVec2(0,0), ImVec2(previewTexture->GetWidth() * previewTexture->GetScaleX(), previewTexture->GetHeight() * previewTexture->GetScaleY()));
+
+			ImGui::End();
+			ImGui::Render();
+			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+
+			pglSwapBuffers();
+
+			selection_changed = false;
+		}
+
+		if(configure)
+		{
+			UI::LoadRomPreferences( roms.at(currentItem).mRomID );
+
+			while( UI::DrawOptionsPage(roms.at(currentItem).mRomID) )
+			{
+				gspWaitForVBlank();
+				pglSwapBuffers();
+				hidScanInput();
+			}
+
+			configure = false;
+		}
+		
 	}
 
-	return nullptr;
+	return roms.at(currentItem).mFilename;
 }
