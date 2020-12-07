@@ -138,17 +138,24 @@ void AudioOutput::AddBuffer( u8 *start, u32 length )
 
 	u32 num_samples = length / sizeof( Sample );
 
+	u32 output_freq = DESIRED_OUTPUT_FREQUENCY;
+	if (gAudioRateMatch)
+	{
+		if (gSoundSync > 88200)	output_freq = 88200;	//limit upper rate
+		else if (gSoundSync < DESIRED_OUTPUT_FREQUENCY)	output_freq = DESIRED_OUTPUT_FREQUENCY;	//limit lower rate
+	}
+
 	switch( gAudioPluginEnabled )
 	{
 	case APM_DISABLED:
 		break;
 
 	case APM_ENABLED_ASYNC:
-		mAudioBuffer->AddSamples( reinterpret_cast< const Sample * >( start ), num_samples, mFrequency, 44100 );
+		mAudioBuffer->AddSamples( reinterpret_cast< const Sample * >( start ), num_samples, mFrequency, output_freq );
 		break;
 
 	case APM_ENABLED_SYNC:
-		mAudioBuffer->AddSamples( reinterpret_cast< const Sample * >( start ), num_samples, mFrequency, 44100 );
+		mAudioBuffer->AddSamples( reinterpret_cast< const Sample * >( start ), num_samples, mFrequency, output_freq );
 		break;
 	}
 }
