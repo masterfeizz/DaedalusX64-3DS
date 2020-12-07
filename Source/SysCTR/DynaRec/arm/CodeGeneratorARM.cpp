@@ -218,7 +218,7 @@ void CCodeGeneratorARM::Initialise( u32 entry_address, u32 exit_address, u32 * h
 	// CALL( CCodeLabel( LogFragmentEntry ) );
 
 	//PUSH(1 << ArmReg_R14);
-
+	mEntryAddress = entry_address;
 	if( hit_counter != NULL )
 	{
 		MOV32(ArmReg_R1, (u32)hit_counter);
@@ -251,7 +251,7 @@ void	CCodeGeneratorARM::SetRegisterSpanList(const SRegisterUsageInfo& register_u
 	}
 
 	// Optimization for self looping code
-	if (false && loops_to_self)
+	if (gDynarecLoopOptimisation && loops_to_self)
 	{
 		mUseFixedRegisterAllocation = true;
 		u32		cache_reg_idx(0);
@@ -909,6 +909,67 @@ CJumpLocation CCodeGeneratorARM::GenerateExitCode( u32 exit_address, u32 jump_ad
 		INT3();
 	}
 #endif
+
+	if( (exit_address == mEntryAddress) & mLoopTop.IsSet() )
+	{
+		#ifdef DAEDALUS_ENABLE_ASSERTS
+		DAEDALUS_ASSERT( mUseFixedRegisterAllocation, "Have mLoopTop but unfixed register allocation?" );
+		#endif
+		FlushAllFloatingPointRegisters( mRegisterCache, false );
+
+		// Check if we're ok to continue, without flushing any registers
+		GetVar( ArmReg_R0, &gCPUState.CPUControl[C0_COUNT]._u32 );
+		GetVar( ArmReg_R1, (const u32*)&gCPUState.Events[0].mCount );
+
+		//
+		//	Pull in any registers which may have been flushed for whatever reason.
+		//
+		// Skip r0
+		for( u32 i {1}; i < NUM_N64_REGS; i++ )
+		{
+			EN64Reg	n64_reg = EN64Reg( i );
+
+			//if( mRegisterCache.IsDirty( n64_reg, 0 ) & mRegisterCache.IsKnownValue( n64_reg, 0 ) )
+			//{
+			//	FlushRegister( mRegisterCache, n64_reg, 0, false );
+			//}
+			//if( mRegisterCache.IsDirty( n64_reg, 1 ) & mRegisterCache.IsKnownValue( n64_reg, 1 ) )
+			//{
+			//	FlushRegister( mRegisterCache, n64_reg, 1, false );
+			//}
+
+			PrepareCachedRegister( n64_reg, 0 );
+			PrepareCachedRegister( n64_reg, 1 );
+		}
+
+		// Assuming we don't need to set CurrentPC/Delay flags before we branch to the top..
+		//
+		ADD_IMM( ArmReg_R0, ArmReg_R0, num_instructions, ArmReg_R2 );
+		SetVar( &gCPUState.CPUControl[C0_COUNT]._u32, ArmReg_R0 );
+
+		//
+		//	If the event counter is still positive, just jump directly to the top of our loop
+		//
+		SUB_IMM( ArmReg_R1, ArmReg_R1, s16(num_instructions), ArmReg_R2 );
+		SetVar( (u32*)&gCPUState.Events[0].mCount, ArmReg_R1 );
+		CMP_IMM(ArmReg_R1, 0);
+		BX_IMM( mLoopTop, GT );
+
+		FlushAllRegisters( mRegisterCache, true );
+
+		SetVar( &gCPUState.CurrentPC, exit_address );
+		SetVar( &gCPUState.Delay, NO_DELAY );	// ASSUMES store is done in just a single op.
+		
+		CALL( CCodeLabel( reinterpret_cast< const void * >( CPU_HANDLE_COUNT_INTERRUPT ) ));
+
+		RET();
+		//
+		//	Return an invalid jump location to indicate we've handled our own linking.
+		//
+		return CJumpLocation( nullptr );
+	}
+	
+	
 	FlushAllRegisters(mRegisterCache, true);
 	
 	MOV32(ArmReg_R0, num_instructions);

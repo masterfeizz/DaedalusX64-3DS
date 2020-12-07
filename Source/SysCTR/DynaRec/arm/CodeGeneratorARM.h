@@ -123,6 +123,7 @@ class CCodeGeneratorARM : public CCodeGenerator, public CAssemblyWriterARM
 				bool				mSpCachedInESI;		// Is sp cached in ESI?
 				u32					mSetSpPostUpdate;	// Set Sp base counter after this update
 
+				u32					mEntryAddress;
 				CAssemblyBuffer *	mpPrimary;
 				CAssemblyBuffer *	mpSecondary;
 				RegisterSpanList	mRegisterSpanList;
