@@ -191,6 +191,14 @@ bool UI::DrawOptionsPage(RomID mRomID)
 
 	ImGui::Spacing();
 
+	ImGui::Text("Dynarec Loop Optimizations");
+	HelpMarker("Enable loop optimizations for better performance\n Can cause freezes!!!");
+	ImGui::Checkbox("##speedsync", (bool*)&romPreferences.DynarecLoopOptimisation);
+	ImGui::SameLine();
+	ImGui::Text(romPreferences.DynarecLoopOptimisation ? "Enabled" : "Disabled");
+
+	ImGui::Spacing();
+
 	ImGui::Text("Limit Framerate");
 	ImGui::Checkbox("##speedsync", (bool*)&romPreferences.SpeedSyncEnabled);
 	ImGui::SameLine();
