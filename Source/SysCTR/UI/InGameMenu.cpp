@@ -361,7 +361,5 @@ void UI::DrawInGameMenu()
 		case 3: DrawOptionsPage(g_ROM.mRomID); break;
 	}
 
-	pglSwapBuffers();
-
 	pglSelectScreen(GFX_TOP, GFX_LEFT);
 }

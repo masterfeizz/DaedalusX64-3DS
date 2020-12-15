@@ -93,14 +93,12 @@ template<> bool CSingleton< CGraphicsContext >::Create()
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-IGraphicsContext::IGraphicsContext()
-	:	mInitialised(false)
-	,	mDumpNextScreen(false)
+IGraphicsContext::IGraphicsContext() : mInitialised(false), mDumpNextScreen(false)
 {	
-	gVertexBufferPtr = (float*)linearAlloc(0x600000);
-	gColorBufferPtr = (uint32_t*)linearAlloc(0x200000);
-	gTexCoordBufferPtr = (float*)linearAlloc(0x600000);
-
+	gVertexBufferPtr   =    (float*)linearAlloc(0x300000);
+	gTexCoordBufferPtr =    (float*)linearAlloc(0x200000);
+	gColorBufferPtr    = (uint32_t*)linearAlloc(0x100000);
+	
 	gVertexBuffer = gVertexBufferPtr;
 	gColorBuffer = gColorBufferPtr;
 	gTexCoordBuffer = gTexCoordBufferPtr;
@@ -163,16 +161,8 @@ void IGraphicsContext::ClearColBufferAndDepth(const c32 & colour)
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 }
 
-static bool newFrame = true;
-
 void IGraphicsContext::BeginFrame()
 {
-	if(newFrame)
-	{
-		ClearToBlack();
-		newFrame = false;
-	}
-
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -189,15 +179,24 @@ void IGraphicsContext::EndFrame()
 
 void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 {
+	static unsigned resetVertexBuffer = 0;
+
 	pglSwapBuffers();
 
-	gVertexBuffer = gVertexBufferPtr;
-	gColorBuffer = gColorBufferPtr;
-	gTexCoordBuffer = gTexCoordBufferPtr;
-	gVertexCount = 0;
-	newFrame = true;
+	if( (++resetVertexBuffer % 4) == 0 )
+	{
+		gVertexBuffer = gVertexBufferPtr;
+		gColorBuffer = gColorBufferPtr;
+		gTexCoordBuffer = gTexCoordBufferPtr;
+		gVertexCount = 0;
+
+		resetVertexBuffer = 0;
+	}
 
 	UI::DrawInGameMenu();
+
+	if( gCleanSceneEnabled )
+		ClearToBlack();
 }
 
 void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)

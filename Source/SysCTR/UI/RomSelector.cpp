@@ -194,8 +194,6 @@ std::string UI::DrawRomSelector()
 			ImGui::Render();
 			ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
-			pglSwapBuffers();
-
 			selection_changed = false;
 		}
 
