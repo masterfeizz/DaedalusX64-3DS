@@ -122,7 +122,7 @@ void FramerateLimiter_Limit()
 		if( delay_ticks > 0 )
 		{
 			//printf( "Delay ticks: %d\n", delay_ticks );
-			ThreadSleepTicks( delay_ticks & 0xFFFF );
+			ThreadSleepTicks( delay_ticks );
 			NTiming::GetPreciseTime(&now);
 		}
 	}
