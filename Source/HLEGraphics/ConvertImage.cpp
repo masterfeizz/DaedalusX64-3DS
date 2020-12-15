@@ -18,34 +18,18 @@ Copyright (C) 2001 StrmnNrmn
 */
 
 #include "stdafx.h"
-#include "ConvertImage.h"
-#include "TextureInfo.h"
 
 #include "DLDebug.h"
 #include "Core/Memory.h"
 #include "Debug/DBGConsole.h"
-
-#include "RDP.h"
-#include "N64PixelFormat.h"
-
 #include "Graphics/NativePixelFormat.h"
-
+#include "HLEGraphics/ConvertFormats.h"
+#include "HLEGraphics/ConvertImage.h"
+#include "HLEGraphics/N64PixelFormat.h"
+#include "HLEGraphics/RDP.h"
+#include "HLEGraphics/TextureInfo.h"
 #include "Math/MathUtil.h"
-
 #include "OSHLE/ultra_gbi.h"
-
-uint32_t ConvertYUV16ToRGBA8888(int Y, int U, int V)
-{
-    int R = int(Y + (1.370705f * (V-128)));
-    int G = int(Y - (0.698001f * (V-128)) - (0.337633f * (U-128)));
-    int B = int(Y + (1.732446f * (U-128)));
-
-    R = R < 0 ? 0 : (R>255 ? 255 : R);
-    G = G < 0 ? 0 : (G>255 ? 255 : G);
-    B = B < 0 ? 0 : (B>255 ? 255 : B);
-
-    return (0xFF << 24) | (B << 16) | (G << 8) | R;
-}
 
 namespace
 {
@@ -69,34 +53,6 @@ struct TextureDestInfo
 	void *				Data;			// Pointer to the top left pixel of the image
 	NativePf8888 *		Palette;
 };
-
-static const u8 OneToEight[2] =
-{
-	0x00,		// 0 -> 00 00 00 00
-	0xff		// 1 -> 11 11 11 11
-};
-
-static const u8 ThreeToEight[8] =
-{
-	0x00,		// 000 -> 00 00 00 00
-	0x24,		// 001 -> 00 10 01 00
-	0x49,		// 010 -> 01 00 10 01
-	0x6d,       // 011 -> 01 10 11 01
-	0x92,       // 100 -> 10 01 00 10
-	0xb6,		// 101 -> 10 11 01 10
-	0xdb,		// 110 -> 11 01 10 11
-	0xff		// 111 -> 11 11 11 11
-};
-
-
-static const u8 FourToEight[16] =
-{
-	0x00, 0x11, 0x22, 0x33,
-	0x44, 0x55, 0x66, 0x77,
-	0x88, 0x99, 0xaa, 0xbb,
-	0xcc, 0xdd, 0xee, 0xff
-};
-
 
 template< u32 Size >
 struct SByteswapInfo;
@@ -181,27 +137,27 @@ static void ConvertGenericYUVBlocks( const TextureDestInfo & dsti, const Texture
 	u32 *		dst  = reinterpret_cast< u32 * >( dsti.Data );
 	const u8 *	src  = g_pu8RamBase;
 	u32			src_offset = ti.GetLoadAddress();
-	
+
 	u32 width = ti.GetWidth();
 	u32 height = ti.GetHeight();
-	
+
 	u32 *mb = (u32*)(src + src_offset);
-	
+
 	//yuv macro block contains 16x16 texture.
-	for (u16 h = 0; h < ti.GetHeight(); h++)
+	for (u32 h = 0; h < height; h++)
 	{
-		for (u16 w = 0; w < ti.GetWidth(); w+=2)
+		// Do two pixels at a time
+		for (u32 w = 0; w < width; w+=2)
 		{
 			u32 t = *(mb++); //each u32 contains 2 pixels
 			u8 y1 = (u8)(t    )&0xFF;
 			u8 v  = (u8)(t>>8 )&0xFF;
 			u8 y0 = (u8)(t>>16)&0xFF;
 			u8 u  = (u8)(t>>24)&0xFF;
-			*(dst++) = (u32)ConvertYUV16ToRGBA8888(y0, u, v);
-			*(dst++) = (u32)ConvertYUV16ToRGBA8888(y1, u, v);
+			*(dst++) = YUV16(y0, u, v);
+			*(dst++) = YUV16(y1, u, v);
 		}
 	}
-	
 }
 
 };
@@ -220,7 +176,7 @@ static void ConvertPalettisedTo8888( const TextureDestInfo & dsti, const Texture
 
 	if (ti.IsSwapped())
 	{
-		for (u32 y {}; y < ti.GetHeight(); y++)
+		for (u32 y = 0; y < ti.GetHeight(); y++)
 		{
 			if ((y&1) == 0)
 			{
@@ -237,7 +193,7 @@ static void ConvertPalettisedTo8888( const TextureDestInfo & dsti, const Texture
 	}
 	else
 	{
-		for (u32 y {}; y < ti.GetHeight(); y++)
+		for (u32 y = 0; y < ti.GetHeight(); y++)
 		{
 			unswapped_fn( dst, src, src_offset, ti.GetWidth(), palette );
 
@@ -259,7 +215,7 @@ static void ConvertPalettisedToCI( const TextureDestInfo & dsti, const TextureIn
 
 	if (ti.IsSwapped())
 	{
-		for (u32 y {}; y < ti.GetHeight(); y++)
+		for (u32 y = 0; y < ti.GetHeight(); y++)
 		{
 			if ((y&1) == 0)
 			{
@@ -276,7 +232,7 @@ static void ConvertPalettisedToCI( const TextureDestInfo & dsti, const TextureIn
 	}
 	else
 	{
-		for (u32 y {}; y < ti.GetHeight(); y++)
+		for (u32 y = 0; y < ti.GetHeight(); y++)
 		{
 			unswapped_fn( dst, src, src_offset, ti.GetWidth() );
 
@@ -330,7 +286,7 @@ struct SConvert
 												 ConvertRow< OutT, Fiddle, Swizzle >,
 												 ConvertRow< OutT, Fiddle, 0 > );
 	}
-	
+
 	template < typename OutT >
 	static inline void ConvertYUVTextureT( const TextureDestInfo & dsti, const TextureInfo & ti )
 	{
@@ -344,7 +300,7 @@ struct SConvert
 			ConvertYUVTextureT< NativePf8888 >( dsti, ti ); // NOTE: Hardcoded to RGB8888
 			return;
 		}
-		
+
 		switch( dsti.Format )
 		{
 		case TexFmt_5650:	ConvertTextureT< NativePf5650 >( dsti, ti ); return;
@@ -370,7 +326,7 @@ struct SConvertIA4
 	static inline void ConvertRow( OutT * dst, const u8 * src, u32 src_offset, u32 width )
 	{
 		// Do two pixels at a time
-		for (u32 x {}; x < width; x+=2)
+		for (u32 x = 0; x < width; x+=2)
 		{
 			u8 b = src[src_offset ^ F];
 
@@ -432,7 +388,7 @@ struct SConvertI4
 	static inline void ConvertRow( OutT * dst, const u8 * src, u32 src_offset, u32 width )
 	{
 		// Do two pixels at a time
-		for ( u32 x {}; x+1 < width; x+=2 )
+		for ( u32 x = 0; x+1 < width; x+=2 )
 		{
 			u8 b {src[src_offset ^ F]};
 
@@ -494,7 +450,7 @@ static void ConvertPalette(ETLutFmt tlut_format, NativePf8888 * dst, const void 
 	{
 		const N64PfIA16 * palette = static_cast< const N64PfIA16 * >( src );
 
-		for( u32 i {}; i < count; ++i )
+		for( u32 i = 0; i < count; ++i )
 		{
 			dst[ i ] = NativePf8888::Make( palette[ i ^ U16H_TWIDDLE ] );
 		}
@@ -504,7 +460,7 @@ static void ConvertPalette(ETLutFmt tlut_format, NativePf8888 * dst, const void 
 		// NB: assume RGBA for all other tlut_formats.
 		const N64Pf5551 * palette = static_cast< const N64Pf5551 * >( src );
 
-		for( u32 i {}; i < count; ++i )
+		for( u32 i = 0; i < count; ++i )
 		{
 			dst[ i ] = NativePf8888::Make( palette[ i ^ U16H_TWIDDLE ] );
 		}
@@ -514,7 +470,7 @@ static void ConvertPalette(ETLutFmt tlut_format, NativePf8888 * dst, const void 
 template< u32 F >
 static void ConvertCI4_Row( NativePfCI44 * dst, const u8 * src, u32 src_offset, u32 width )
 {
-	for (u32 x {}; x+1 < width; x+=2)
+	for (u32 x = 0; x+1 < width; x+=2)
 	{
 		u8 b = src[src_offset ^ F];
 
@@ -626,14 +582,11 @@ static void ConvertI8(const TextureDestInfo & dsti, const TextureInfo & ti)
 
 static void ConvertCI8(const TextureDestInfo & dsti, const TextureInfo & ti)
 {
-	#ifdef DAEDALUS_ENABLE_ASSERTS
-	DAEDALUS_ASSERT(ti.GetTlutAddress(), "No TLUT address");
-	#endif
 
 	NativePf8888 temp_palette[256];
 
 	NativePf8888 *	dst_palette = dsti.Palette ? reinterpret_cast< NativePf8888 * >( dsti.Palette ) : temp_palette;
-	const void * 	src_palette = reinterpret_cast< const void * >( ti.GetTlutAddress() );
+	const void * 	src_palette = g_pu8RamBase + ti.GetTlutAddress();
 
 	ConvertPalette(ti.GetTLutFormat(), dst_palette, src_palette, 256);
 
@@ -666,13 +619,10 @@ static void ConvertYUV16(const TextureDestInfo & dsti, const TextureInfo & ti)
 
 static void ConvertCI4(const TextureDestInfo & dsti, const TextureInfo & ti)
 {
-#ifdef DAEDALUS_ENABLE_ASSERTS
-	DAEDALUS_ASSERT(ti.GetTlutAddress(), "No TLUT address");
-#endif
 	NativePf8888 temp_palette[16];
 
 	NativePf8888 *	dst_palette = dsti.Palette ? reinterpret_cast< NativePf8888 * >( dsti.Palette ) : temp_palette;
-	const void * 	src_palette = reinterpret_cast< const void * >( ti.GetTlutAddress() );
+	const void * 	src_palette = g_pu8RamBase + ti.GetTlutAddress();
 
 	ConvertPalette(ti.GetTLutFormat(), dst_palette, src_palette, 16);
 

@@ -23,12 +23,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "stdafx.h"
 
-#include "TextureCache.h"
-#include "TextureInfo.h"
+#include "HLEGraphics/DLDebug.h"
+#include "HLEGraphics/TextureCache.h"
+#include "HLEGraphics/TextureInfo.h"
 
 #include "Utility/Profiler.h"
-
-#include "DLDebug.h"
 
 #include <vector>
 #include <algorithm>
@@ -109,12 +108,12 @@ void CTextureCache::DropTextures()
 {
 	MutexLock lock(GetDebugMutex());
 
-	for( u32 i {}; i < mTextures.size(); ++i)
+	for( u32 i = 0; i < mTextures.size(); ++i)
 	{
 		delete mTextures[i];
 	}
 	mTextures.clear();
-	for( u32 i {}; i < HASH_TABLE_SIZE; ++i )
+	for( u32 i = 0; i < HASH_TABLE_SIZE; ++i )
 	{
 		mpCacheHashTable[i] = nullptr;
 	}
@@ -125,7 +124,7 @@ void CTextureCache::DropTextures()
 
 static void TextureCacheStat( u32 l1_hit, u32 l2_hit, u32 size )
 {
-	static u32 total_lookups {}, total_l1_hits {}, total_l2_hits {};
+	static u32 total_lookups = 0, total_l1_hits = 0, total_l2_hits = 0;
 
 	total_l1_hits += l1_hit;
 	total_l2_hits += l2_hit;
@@ -168,9 +167,14 @@ public:
 // Otherwise, create surfaces, and load texture into memory
 CachedTexture * CTextureCache::GetOrCreateCachedTexture(const TextureInfo & ti)
 {
-	#ifdef DAEDALUS_ENABLE_PROFILING
-		DAEDALUS_PROFILE( "CTextureCache::GetOrCreateCachedTexture" );
-	#endif
+	DAEDALUS_PROFILE( "CTextureCache::GetOrCreateCachedTexture" );
+
+	if (ti.GetWidth() > 4096 || ti.GetHeight() > 4096)
+	{
+		DAEDALUS_ERROR("Texture is too large: %d x %d", ti.GetWidth(), ti.GetHeight());
+		return nullptr;
+	}
+
 	// NB: this is a no-op in normal builds.
 	MutexLock lock(GetDebugMutex());
 
@@ -186,7 +190,7 @@ CachedTexture * CTextureCache::GetOrCreateCachedTexture(const TextureInfo & ti)
 		return mpCacheHashTable[ixa];
 	}
 
-	u32 ixb {MakeHashIdxB( ti )};
+	u32 ixb = MakeHashIdxB( ti );
 	if( mpCacheHashTable[ixb] && mpCacheHashTable[ixb]->GetTextureInfo() == ti )
 	{
 		RECORD_CACHE_HIT( 1, 0 );

@@ -21,8 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef HLEGRAPHICS_RDPSTATEMANAGER_H_
 #define HLEGRAPHICS_RDPSTATEMANAGER_H_
 
-#include "RDP.h"
-#include "TextureInfo.h"
+#include "HLEGraphics/RDP.h"
+#include "HLEGraphics/TextureInfo.h"
 
 #include <map>
 
@@ -90,8 +90,7 @@ private:
 extern CRDPStateManager		gRDPStateManager;
 extern RDP_OtherMode		gRDPOtherMode;
 
-extern u32* gTlutLoadAddresses[ 4096 >> 6 ];
-#define TLUT_BASE ((u32)(gTlutLoadAddresses[0]))
+extern u32 gTlutLoadAddresses[ 4096 >> 6 ];
 
 
 #endif // HLEGRAPHICS_RDPSTATEMANAGER_H_

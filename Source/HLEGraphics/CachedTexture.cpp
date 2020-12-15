@@ -18,23 +18,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "stdafx.h"
-#include "CachedTexture.h"
 
 #include <vector>
 
-#include "TextureInfo.h"
-#include "ConvertImage.h"
-#include "ConvertTile.h"
-#include "Graphics/ColourValue.h"
-#include "Graphics/NativePixelFormat.h"
-#include "Graphics/NativeTexture.h"
-#include "Graphics/PngUtil.h"
-#include "Graphics/TextureTransform.h"
 
 #include "Config/ConfigOptions.h"
 #include "Core/ROM.h"
 #include "Debug/DBGConsole.h"
 #include "Debug/Dump.h"
+#include "HLEGraphics/CachedTexture.h"
+#include "HLEGraphics/ConvertImage.h"
+#include "HLEGraphics/ConvertTile.h"
+#include "HLEGraphics/TextureInfo.h"
+#include "Graphics/ColourValue.h"
+#include "Graphics/NativePixelFormat.h"
+#include "Graphics/NativeTexture.h"
+#include "Graphics/PngUtil.h"
+#include "Graphics/TextureTransform.h"
 #include "Math/Math.h"
 #include "Math/MathUtil.h"
 #include "OSHLE/ultra_gbi.h"
@@ -120,8 +120,8 @@ static bool GenerateTexels(void ** p_texels,
 	NativePf8888 *	palette = IsTextureFormatPalettised( texture_format ) ? gPaletteBuffer : nullptr;
 
 #ifdef DAEDALUS_ACCURATE_TMEM
-	// NB: if line is 0, it implies this is a direct load from ram (e.g. DLParser_Sprite2DDraw etc)
-	// This check isn't robust enough, SSV set ti.Line == 0 in game without calling Sprite2D
+	// NB: if line is 0, it implies this is a direct load from ram (e.g. S2DEX and Sprite2D ucodes)
+	// Some games set ti.Line = 0 on LoadTile, ex SSV and Paper Mario
 	if (ti.GetLine() > 0)
 	{
 		if (ConvertTile(ti, texels, palette, texture_format, pitch))
@@ -158,7 +158,7 @@ static void UpdateTexture( const TextureInfo & ti, CNativeTexture * texture )
 	if ( texture != nullptr && texture->HasData() )
 	{
 		ETextureFormat	format = texture->GetFormat();
-		u32 			stride {texture->GetStride()};
+		u32 			stride = texture->GetStride();
 
 		void *	texels;
 		void *	palette;
@@ -182,8 +182,8 @@ static void UpdateTexture( const TextureInfo & ti, CNativeTexture * texture )
 			//
 			//	Mirror the texels if required (in-place)
 			//
-			bool mirror_s {ti.GetEmulateMirrorS()};
-			bool mirror_t {ti.GetEmulateMirrorT()};
+			bool mirror_s = ti.GetEmulateMirrorS();
+			bool mirror_t = ti.GetEmulateMirrorT();
 			if( mirror_s || mirror_t )
 			{
 				MirrorTexels( mirror_s, mirror_t, texels, stride, texels, stride, format, ti.GetWidth(), ti.GetHeight() );
@@ -231,8 +231,8 @@ bool CachedTexture::Initialise()
 	#ifdef DAEDALUS_ENABLE_ASSERTS
 	DAEDALUS_ASSERT_Q(mpTexture == nullptr);
 	#endif
-	u32 width  {mTextureInfo.GetWidth()};
-	u32 height {mTextureInfo.GetHeight()};
+	u32 width  = mTextureInfo.GetWidth();
+	u32 height = mTextureInfo.GetHeight();
 
 	if (mTextureInfo.GetEmulateMirrorS()) width  *= 2;
 	if (mTextureInfo.GetEmulateMirrorT()) height *= 2;
@@ -264,8 +264,8 @@ bool CachedTexture::UpdateTextureHash()
 		return true;
 	}
 
-	u32 new_hash_value {mTextureInfo.GenerateHashValue()};
-	bool changed       {new_hash_value != mTextureContentsHash};
+	u32 new_hash_value = mTextureInfo.GenerateHashValue();
+	bool changed       = new_hash_value != mTextureContentsHash;
 
 	mTextureContentsHash = new_hash_value;
 	return changed;
@@ -321,7 +321,7 @@ bool CachedTexture::HasExpired() const
 			if( g_ROM.ZELDA_HACK && (mTextureInfo.GetSize() == G_IM_SIZ_4b) && mTextureContentsHash != mTextureInfo.GenerateHashValue() ) return true;
 
 			//Check if texture has changed
-			if( mTextureContentsHash != mTextureInfo.GenerateHashValue() ) return true;
+			//if( mTextureContentsHash != mTextureInfo.GenerateHashValue() ) return true;
 		}
 	}
 
