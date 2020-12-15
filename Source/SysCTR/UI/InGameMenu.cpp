@@ -71,30 +71,19 @@ static void DrawSaveStatePage()
 
 	char buttonString[20];
 
+	float buttonWidth = ImGui::GetContentRegionAvailWidth();
+
 	for(int i = 0; i < 5; i++)
 	{
 		sprintf(buttonString, "Save slot: %i", i);
 
-		if(SaveStateExists(i))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0xff227ee6));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor(0xff129cf3));
-		}
-		else
-		{	
-			ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0xff60ae27));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor(0xff71cc2e));
-		}
-
-		if(ImGui::Button(buttonString, ImVec2(304, 30)))
+		if(ImGui::ColoredButton(buttonString, SaveStateExists(i) ? 0.15f : 0.40f, ImVec2(buttonWidth, 30)))
 		{
 			ExecSaveState(i);
 		}
-
-		ImGui::PopStyleColor(2);
 	}
 
-	if(ImGui::Button("Cancel", ImVec2(304, 30))) currentPage = 0;
+	if(ImGui::Button("Cancel", ImVec2(buttonWidth, 30))) currentPage = 0;
 
 	ImGui::End();
 	ImGui::Render();
@@ -113,30 +102,19 @@ static void DrawLoadStatePage()
 
 	char buttonString[20];
 
+	float buttonWidth = ImGui::GetContentRegionAvailWidth();
+	
 	for(int i = 0; i < 5; i++)
 	{
 		sprintf(buttonString, "Load slot: %i", i);
 
-		if(SaveStateExists(i))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0xff227ee6));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor(0xff129cf3));
-		}
-		else
-		{	
-			ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0xff36342d));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor(0xff36342d));
-		}
-
-		if(ImGui::Button(buttonString, ImVec2(304, 30)))
+		if(ImGui::ColoredButton(buttonString, SaveStateExists(i) ? 0.15f : 0.40f, ImVec2(buttonWidth, 30)))
 		{
 			LoadSaveState(i);
 		}
-
-		ImGui::PopStyleColor(2);
 	}
 
-	if(ImGui::Button("Cancel", ImVec2(304, 30))) currentPage = 0;
+	if(ImGui::Button("Cancel", ImVec2(buttonWidth, 30))) currentPage = 0;
 
 	ImGui::End();
 	ImGui::Render();
@@ -179,87 +157,119 @@ bool UI::DrawOptionsPage(RomID mRomID)
 	ImGui::SetNextWindowSize( ImVec2(320, 240) );
 
 	ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus);
-
 	ImGui::PushItemWidth(-1);
-
 	ImGui::Spacing();
 
-	ImGui::Text("Dynamic Recompilation");
-	ImGui::Checkbox("##DynaRec", &romPreferences.DynarecEnabled);
-	ImGui::SameLine();
-	ImGui::Text(romPreferences.DynarecEnabled ? "Enabled" : "Disabled");
+	ImGui::BeginTabBar("Tabs", ImGuiTabBarFlags_None);
 
-	ImGui::Spacing();
+	if (ImGui::BeginTabItem("Core"))
+	{
+		ImGui::Text("Dynamic Recompilation");
+		ImGui::Checkbox("##DynaRec", &romPreferences.DynarecEnabled);
+		ImGui::SameLine();
+		ImGui::Text(romPreferences.DynarecEnabled ? "Enabled" : "Disabled");
 
-	ImGui::Text("Dynarec Loop Optimizations");
-	HelpMarker("Enable loop optimizations for better performance\n Can cause freezes!!!");
-	ImGui::Checkbox("##speedsync", (bool*)&romPreferences.DynarecLoopOptimisation);
-	ImGui::SameLine();
-	ImGui::Text(romPreferences.DynarecLoopOptimisation ? "Enabled" : "Disabled");
+		ImGui::Spacing();
 
-	ImGui::Spacing();
+		ImGui::Text("Dynarec Loop Optimizations");
+		HelpMarker("Enable loop optimizations for better performance\n Can cause freezes!!!");
+		ImGui::Checkbox("##loopopt", (bool*)&romPreferences.DynarecLoopOptimisation);
+		ImGui::SameLine();
+		ImGui::Text(romPreferences.DynarecLoopOptimisation ? "Enabled" : "Disabled");
 
-	ImGui::Text("Limit Framerate");
-	ImGui::Checkbox("##speedsync", (bool*)&romPreferences.SpeedSyncEnabled);
-	ImGui::SameLine();
-	ImGui::Text(romPreferences.SpeedSyncEnabled ? "Enabled" : "Disabled");
+		ImGui::Spacing();
 
+		ImGui::Text("Dynarec Memory Access Optimizations");
+		HelpMarker("Enable memory access optimizations for better performance\n Can cause freezes!!!");
+		ImGui::Checkbox("##memaccess", (bool*)&romPreferences.MemoryAccessOptimisation);
+		ImGui::SameLine();
+		ImGui::Text(romPreferences.MemoryAccessOptimisation ? "Enabled" : "Disabled");
+
+		ImGui::Spacing();
+
+		ImGui::Text("Limit Framerate");
+		ImGui::Checkbox("##speedsync", (bool*)&romPreferences.SpeedSyncEnabled);
+		ImGui::SameLine();
+		ImGui::Text(romPreferences.SpeedSyncEnabled ? "Enabled" : "Disabled");
+
+		ImGui::EndTabItem();
+	}
+
+	if (ImGui::BeginTabItem("Audio"))
+	{
+		const char* audioOptions[] = { "Disabled", "Asynchronous", "Synchronous" };
+		ImGui::Text("Audio Plugin");
+		currentSelection = (int)romPreferences.AudioEnabled;
+		ImGui::Combo("##audio_combo", &currentSelection, audioOptions, 3);
+		romPreferences.AudioEnabled = EAudioPluginMode(currentSelection);
+
+		ImGui::EndTabItem();
+	}
+
+	if (ImGui::BeginTabItem("Video"))
+	{
+		ImGui::Text("Sync Video Rate");
+		HelpMarker("Speeds up video logic to match framerate.");
+		ImGui::Checkbox("##VideoRateMatch", &romPreferences.VideoRateMatch);
+		ImGui::SameLine();
+		ImGui::Text(romPreferences.VideoRateMatch ? "Enabled" : "Disabled");
+
+		ImGui::Spacing();
+
+		const char* hashOptions[] = { "Disabled", "Every frame", "Every 2 frames", "Every 4 frames", "Every 8 frames", "Every 16 frames", "Every 32 frames" };
+		ImGui::Text("Texture Hash Check Frequency");
+		HelpMarker( "Frequency in which to check for texture changes.\n"
+					"Disabled is the fastest, but can cause graphical glitches.\n");
+		currentSelection = (int)romPreferences.CheckTextureHashFrequency;
+		ImGui::Combo("##hash_frequency", &currentSelection, hashOptions, NUM_THF);
+		romPreferences.CheckTextureHashFrequency = ETextureHashFrequency(currentSelection);
+
+		ImGui::Spacing();
+
+		const char* frameskipOptions[] = { "Disabled", "Auto 1", "Auto 2", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+		ImGui::Text("Frameskip");
+		currentSelection = (int)romPreferences.Frameskip;
+		ImGui::Combo("##frameskip_combo", &currentSelection, frameskipOptions, NUM_FRAMESKIP_VALUES);
+		romPreferences.Frameskip = EFrameskipValue(currentSelection);
+
+		ImGui::EndTabItem();
+	}
+
+	if (ImGui::BeginTabItem("Input"))
+	{
+		if(ImGui::BeginCombo("Configuration", CInputManager::Get()->GetConfigurationName(romPreferences.ControllerIndex)) )
+		{
+			for( int i = 0; i < CInputManager::Get()->GetNumConfigurations(); i++ )
+			{
+				const bool isSelected = (romPreferences.ControllerIndex == i);
+
+				if( ImGui::Selectable(CInputManager::Get()->GetConfigurationName(i), isSelected) )
+                    romPreferences.ControllerIndex = i;
+			}
+
+			ImGui::EndCombo();
+		}
+
+		ImGui::Text(CInputManager::Get()->GetConfigurationDescription(romPreferences.ControllerIndex) );
+
+		ImGui::EndTabItem();
+	}
+	
+
+	ImGui::EndTabBar();
 	ImGui::Spacing();
 	ImGui::Separator();
-	ImGui::Spacing();
 
-	const char* audioOptions[] = { "Disabled", "Asynchronous", "Synchronous" };
-	ImGui::Text("Audio Plugin");
-	currentSelection = (int)romPreferences.AudioEnabled;
-	ImGui::Combo("##audio_combo", &currentSelection, audioOptions, 3);
-	romPreferences.AudioEnabled = EAudioPluginMode(currentSelection);
+	int buttonWidth = (ImGui::GetContentRegionAvailWidth() - 6) / 2;
 
-	ImGui::Spacing();
-
-	ImGui::Text("Sync Audio Rate");
-	HelpMarker("Speeds up audio logic to match framerate.");
-	ImGui::Checkbox("##AudioRateMatch", &romPreferences.AudioRateMatch);
-	ImGui::SameLine();
-	ImGui::Text(romPreferences.AudioRateMatch ? "Enabled" : "Disabled");
-
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	ImGui::Text("Sync Video Rate");
-	HelpMarker("Speeds up video logic to match framerate.");
-	ImGui::Checkbox("##VideoRateMatch", &romPreferences.VideoRateMatch);
-	ImGui::SameLine();
-	ImGui::Text(romPreferences.VideoRateMatch ? "Enabled" : "Disabled");
-
-	ImGui::Spacing();
-
-	const char* hashOptions[] = { "Disabled", "Every frame", "Every 2 frames", "Every 4 frames", "Every 8 frames", "Every 16 frames", "Every 32 frames" };
-	ImGui::Text("Texture Hash Check Frequency");
-	HelpMarker( "Frequency in which to check for texture changes.\n"
-				"Disabled is the fastest, but can cause graphical glitches.\n");
-	currentSelection = (int)romPreferences.CheckTextureHashFrequency;
-	ImGui::Combo("##hash_frequency", &currentSelection, hashOptions, NUM_THF);
-	romPreferences.CheckTextureHashFrequency = ETextureHashFrequency(currentSelection);
-
-	ImGui::Spacing();
-
-	const char* frameskipOptions[] = { "Disabled", "Auto 1", "Auto 2", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
-	ImGui::Text("Frameskip");
-	currentSelection = (int)romPreferences.Frameskip;
-	ImGui::Combo("##frameskip_combo", &currentSelection, frameskipOptions, NUM_FRAMESKIP_VALUES);
-	romPreferences.Frameskip = EFrameskipValue(currentSelection);
-
-	ImGui::Spacing();
-
-	if( ImGui::Button("Cancel", ImVec2(144, 30)) )
+	if( ImGui::Button("Cancel", ImVec2(buttonWidth, 30)) )
 	{
 		currentPage = 0;
 	}
 
 	ImGui::SameLine(0, 4);
 
-	if( ImGui::Button("Save", ImVec2(144, 30)) )
+	if( ImGui::Button("Save", ImVec2(buttonWidth, 30)) )
 	{
 		CPreferences::Get()->SetRomPreferences( mRomID, romPreferences );
 		CPreferences::Get()->Commit();
@@ -280,7 +290,7 @@ bool UI::DrawOptionsPage(RomID mRomID)
 
 static void showFPS()
 {
-	ImGui::SetNextWindowPos( ImVec2(250,0) );
+	ImGui::SetNextWindowPos( ImVec2(249,1) );
 	ImGui::SetNextWindowSize( ImVec2(70, 20) );
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 2)); 
@@ -301,14 +311,13 @@ static void DrawMainPage()
 
 	ImGui::Begin("Menu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-	if( ImGui::Button("Save State", ImVec2(304, 60)) ) currentPage = 1;
-	if( ImGui::Button("Load State", ImVec2(304, 60)) ) currentPage = 2;
+	if( ImGui::Button("Save State", ImVec2(ImGui::GetContentRegionAvailWidth(), 60)) ) currentPage = 1;
+	if( ImGui::Button("Load State", ImVec2(ImGui::GetContentRegionAvailWidth(), 60)) ) currentPage = 2;
 
-	if( ImGui::Button("Close ROM", ImVec2(150, 60)) )  ImGui::OpenPopup("Are you sure?");
-
-	ImGui::SameLine(0, 4);
-
-	if( ImGui::Button("Options", ImVec2(150, 60)) )
+	int buttonWidth = (ImGui::GetContentRegionAvailWidth() - 6) / 2;
+	if( ImGui::ColoredButton("Close ROM", 0.02f, ImVec2(buttonWidth, 60)) )  ImGui::OpenPopup("Are you sure?");
+	ImGui::SameLine();
+	if( ImGui::ColoredButton("Options",   0.55f, ImVec2(buttonWidth, 60)) )
 	{
 		UI::LoadRomPreferences( g_ROM.mRomID );
 		currentPage = 3;
@@ -341,9 +350,8 @@ static void DrawMainPage()
 	ImGui::End();
 
 	showFPS();
-
+	
 	ImGui::Render();
-
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 }
 

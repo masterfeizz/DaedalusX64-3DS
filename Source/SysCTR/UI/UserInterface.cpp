@@ -16,11 +16,8 @@ void UI::Initialize()
 	// Setup Platform/Renderer bindings
 	ImGui_Impl3DS_Init();
 	ImGui_ImplOpenGL2_Init();
-
-	// Setup Dear ImGui style
-	ImGui::StyleColorsDark();
-
-	ImGui::GetStyle().WindowRounding = 0.0f;
+	
+	ImGui::StyleCustomDark();	
 }
 
 void UI::RestoreRenderState()
