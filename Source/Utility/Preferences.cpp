@@ -493,7 +493,7 @@ void SRomPreferences::Apply() const
 	gAudioPluginEnabled         = AudioEnabled;
 //	gAdaptFrequency             = AudioAdaptFrequency;
 	gControllerIndex            = ControllerIndex;							//Used during ROM initialization
-#ifdef DAEDALUS_PSP
+#if defined(DAEDALUS_PSP) || defined(DAEDALUS_CTR)
 	CInputManager::Get()->SetConfiguration( ControllerIndex );  //Used after initialization
 #endif
 }
