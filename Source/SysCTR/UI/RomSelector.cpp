@@ -120,6 +120,8 @@ std::string UI::DrawRomSelector()
 
 	std::vector<SRomInfo> roms = PopulateRomList();
 
+	UI::RestoreRenderState();
+	
 	if(roms.empty())
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
