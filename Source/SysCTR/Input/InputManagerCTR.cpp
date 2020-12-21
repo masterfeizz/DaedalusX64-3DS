@@ -474,7 +474,7 @@ const SButtonNameMapping	gButtonNameMappings[] =
 	{ "3DS.CUp",       KEY_CSTICK_UP },
 	{ "3DS.CDown",     KEY_CSTICK_DOWN },
 	{ "3DS.CLeft",     KEY_CSTICK_LEFT },
-	{ "3DS.CDown",     KEY_CSTICK_RIGHT },
+	{ "3DS.CRight",     KEY_CSTICK_RIGHT },
 };
 
 u32 GetOperatorPrecedence( char op )
