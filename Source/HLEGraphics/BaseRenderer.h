@@ -40,7 +40,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "SysGL/GL.h"
 #endif
 
+#ifdef DAEDALUS_CTR
+#define HD_SCALE 0.8f
+#else
 #define HD_SCALE 0.754166f
+#endif
 
 class CNativeTexture;
 struct TempVerts;

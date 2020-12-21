@@ -22,13 +22,6 @@ extern void HandleEndOfFrame();
 #define SCR_WIDTH 400
 #define SCR_HEIGHT 240
 
-#define MAX_INDEXES 0xFFFF
-
-#define RATIO_4_3 0
-#define RATIO_5_3 1
-
-uint8_t aspectRatio = RATIO_5_3;
-
 uint32_t  gVertexCount = 0;
 float    *gVertexBuffer;
 uint32_t *gColorBuffer;
@@ -95,9 +88,9 @@ template<> bool CSingleton< CGraphicsContext >::Create()
 
 IGraphicsContext::IGraphicsContext() : mInitialised(false), mDumpNextScreen(false)
 {	
-	gVertexBufferPtr   =    (float*)linearAlloc(0x300000);
-	gTexCoordBufferPtr =    (float*)linearAlloc(0x200000);
-	gColorBufferPtr    = (uint32_t*)linearAlloc(0x100000);
+	gVertexBufferPtr   =    (float*)linearAlloc(0x800000);
+	gTexCoordBufferPtr =    (float*)linearAlloc(0x600000);
+	gColorBufferPtr    = (uint32_t*)linearAlloc(0x400000);
 	
 	gVertexBuffer = gVertexBufferPtr;
 	gColorBuffer = gColorBufferPtr;
@@ -183,7 +176,7 @@ void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 
 	pglSwapBuffers();
 
-	if( (++resetVertexBuffer % 4) == 0 )
+	if( (++resetVertexBuffer % 5) == 0 )
 	{
 		gVertexBuffer = gVertexBufferPtr;
 		gColorBuffer = gColorBufferPtr;
@@ -206,15 +199,15 @@ void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)
 
 void IGraphicsContext::ViewportType(u32 *d_width, u32 *d_height) const
 {
-	switch(aspectRatio)
+	switch ( gGlobalPreferences.ViewportType )
 	{
-		case RATIO_5_3:
-			*d_width = SCR_WIDTH;
-			*d_height = SCR_HEIGHT;
-			break;
-		default:
+		case VT_UNSCALED_4_3:
 			*d_width = 320;
 			*d_height = 240;
+			break;
+		default:
+			*d_width = SCR_WIDTH;
+			*d_height = SCR_HEIGHT;
 			break;
 	}
 }

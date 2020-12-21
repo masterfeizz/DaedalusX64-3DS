@@ -232,6 +232,14 @@ bool UI::DrawOptionsPage(RomID mRomID)
 		ImGui::Combo("##frameskip_combo", &currentSelection, frameskipOptions, NUM_FRAMESKIP_VALUES);
 		romPreferences.Frameskip = EFrameskipValue(currentSelection);
 
+		ImGui::Spacing();
+
+		const char* viewporOptions[] = { "4:3", "Widescreen (Streteched)", "Widescreen (Hack)" };
+		ImGui::Text("Aspect Ratio");
+		currentSelection = (int)gGlobalPreferences.ViewportType;
+		ImGui::Combo("##viewport_combo", &currentSelection, viewporOptions, 3);
+		gGlobalPreferences.ViewportType = EViewportType(currentSelection);
+
 		ImGui::EndTabItem();
 	}
 

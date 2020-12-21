@@ -194,9 +194,7 @@ RendererCTR::~RendererCTR()
 }
 
 void RendererCTR::RestoreRenderStates()
-{
-	pglSelectScreen(GFX_TOP, GFX_LEFT);
-	
+{	
 	// Initialise the device to our default state
 	glEnable(GL_TEXTURE_2D);
 	
@@ -648,8 +646,20 @@ void RendererCTR::TexRect(u32 tile_idx, const v2 & xy0, const v2 & xy1, TexCoord
 
 	v2 screen0;
 	v2 screen1;
-	ConvertN64ToScreen( xy0, screen0 );
-	ConvertN64ToScreen( xy1, screen1 );
+	
+	if( gGlobalPreferences.ViewportType == VT_FULLSCREEN_HD )
+	{
+		screen0.x = roundf( roundf( HD_SCALE * xy0.x ) * mN64ToScreenScale.x + 40 );
+		screen0.y = roundf( roundf( xy0.y )            * mN64ToScreenScale.y + mN64ToScreenTranslate.y );
+
+		screen1.x = roundf( roundf( HD_SCALE * xy1.x ) * mN64ToScreenScale.x + 40 ); 
+		screen1.y = roundf( roundf( xy1.y )            * mN64ToScreenScale.y + mN64ToScreenTranslate.y );
+	}
+	else
+	{
+		ConvertN64ToScreen( xy0, screen0 );
+		ConvertN64ToScreen( xy1, screen1 );
+	}
 
 	const f32 depth = gRDPOtherMode.depth_source ? mPrimDepth : 0.0f;
 
