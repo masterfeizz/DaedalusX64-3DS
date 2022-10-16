@@ -167,6 +167,7 @@ std::string UI::DrawRomSelector()
 		ImGui::Render();
 		ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
+		glFinish();
 		pglSwapBuffers();
 
 		//Draw top screen

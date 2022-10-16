@@ -8,7 +8,6 @@
 void UI::Initialize()
 {
 	// Setup Dear ImGui context
-	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
 
@@ -17,14 +16,16 @@ void UI::Initialize()
 	ImGui_Impl3DS_Init();
 	ImGui_ImplOpenGL2_Init();
 	
-	ImGui::StyleCustomDark();	
+	ImGui::StyleCustomDark();
+
+	ImGui::GetStyle().WindowRounding = 0.0f;
 }
 
 void UI::RestoreRenderState()
 {
 	pglSelectScreen(GFX_BOTTOM, GFX_LEFT);
 
-	glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	glViewport(0,0,320,240);
 

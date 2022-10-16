@@ -209,18 +209,6 @@ void CGraphicsPluginImpl::UpdateScreen()
 		
 		if(!gFrameskipActive)
 		{
-			if( gGlobalPreferences.DisplayFramerate )
-			{
-				printf("\x1b[1;1H");
-				
-				switch(gGlobalPreferences.DisplayFramerate)
-				{
-					case 1:
-						printf( "%#.1f  ", gCurrentFramerate );
-						break;
-				}
-			}
-
 			CGraphicsContext::Get()->UpdateFrame( false );
 		}
 

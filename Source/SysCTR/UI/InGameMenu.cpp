@@ -267,6 +267,16 @@ bool UI::DrawOptionsPage(RomID mRomID)
 		ImGui::EndTabItem();
 	}
 	
+	if (ImGui::BeginTabItem("Misc"))
+	{
+		ImGui::Text("Display FPS");
+		ImGui::Checkbox("##DisplayFPS", &gGlobalPreferences.DisplayFramerate);
+		ImGui::SameLine();
+		ImGui::Text(gGlobalPreferences.DisplayFramerate ? "Enabled" : "Disabled");
+
+		ImGui::EndTabItem();
+	}
+
 	ImGui::EndTabBar();
 	ImGui::Spacing();
 	ImGui::Separator();
@@ -301,8 +311,8 @@ bool UI::DrawOptionsPage(RomID mRomID)
 
 static void showFPS()
 {
-	ImGui::SetNextWindowPos( ImVec2(249,1) );
-	ImGui::SetNextWindowSize( ImVec2(70, 20) );
+	ImGui::SetNextWindowPos( ImVec2(250,0) );
+	ImGui::SetNextWindowSize( ImVec2(70, 22) );
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 2)); 
 	ImGui::BeginTooltip();
@@ -313,9 +323,8 @@ static void showFPS()
 
 static void DrawMainPage()
 {
-	//sprintf(titleString, "FPS: %.2f", gCurrentFramerate);
-
 	ImGui_Impl3DS_NewFrame();
+
 	ImGui::SetNextWindowPos( ImVec2(0, 0) );
 	ImGui::SetNextWindowSize( ImVec2(320, 240) );
 
@@ -359,7 +368,8 @@ static void DrawMainPage()
 
 	ImGui::End();
 
-	showFPS();
+	if(gGlobalPreferences.DisplayFramerate)
+		showFPS();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
