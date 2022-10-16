@@ -22,6 +22,8 @@ extern void HandleEndOfFrame();
 #define SCR_WIDTH 400
 #define SCR_HEIGHT 240
 
+static bool newFrame = true;
+
 uint32_t  gVertexCount = 0;
 
 float    *gVertexBuffer;
@@ -171,6 +173,13 @@ void IGraphicsContext::ResetVertexBuffer()
 
 void IGraphicsContext::BeginFrame()
 {
+	if(newFrame)
+	{
+		UI::DrawInGameMenu();
+		ClearToBlack();
+		newFrame = false;
+	}
+
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -189,9 +198,7 @@ void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 {
 	pglSwapBuffers();
 
-	UI::DrawInGameMenu();
-
-	ClearToBlack();
+	newFrame = true;
 }
 
 void IGraphicsContext::ViewportType(u32 *d_width, u32 *d_height) const

@@ -61,15 +61,18 @@ void log2file(const char *format, ...) {
 static void Initialize()
 {
 	_InitializeSvcHack();
+
 	romfsInit();
 	
 	APT_CheckNew3DS(&isN3DS);
 	osSetSpeedupEnable(true);
-
+	
 	gfxInit(GSP_BGR8_OES, GSP_BGR8_OES, true);
-	//gfxSet3D(true);
 
-	pglInit();
+	if(isN3DS)
+		gfxSetWide(true);
+	
+	pglInitEx(0x080000, 0x040000);
 
 	strcpy(gDaedalusExePath, DAEDALUS_CTR_PATH(""));
 	strcpy(g_DaedalusConfig.mSaveDir, DAEDALUS_CTR_PATH("SaveGames/"));
@@ -80,9 +83,11 @@ static void Initialize()
 	System_Init();
 }
 
+
 void HandleEndOfFrame()
 {
 	shouldQuit = !aptMainLoop();
+	
 	if (shouldQuit)
 	{
 		CPU_Halt("Exiting");
