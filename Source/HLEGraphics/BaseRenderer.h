@@ -266,7 +266,7 @@ public:
 	inline void			SetFogColour( c32 colour )				{ mFogColour = colour; }
 #elif defined(DAEDALUS_VITA) || defined (DAEDALUS_CTR)
 	inline void			SetFogMinMax(f32 fog_near, f32 fog_far)	{ glFogf(GL_FOG_START, fog_near); glFogf(GL_FOG_END, fog_far); }
-	inline void			SetFogColour( c32 colour )				{ float fog_clr[4] = {mFogColour.GetRf(), mFogColour.GetBf(), mFogColour.GetGf(), mFogColour.GetAf()}; glFogfv(GL_FOG_COLOR, &fog_clr[0]); }
+	inline void			SetFogColour( c32 colour )				{ float fog_clr[4] = {colour.GetRf(), colour.GetGf(), colour.GetBf(), colour.GetAf()}; glFogfv(GL_FOG_COLOR, &fog_clr[0]); }
 #endif
 
 	// PrimDepth will replace the z value if depth_source=1 (z range 32767-0 while PSP depthbuffer range 0-65535)//Corn
@@ -382,7 +382,7 @@ protected:
 	inline void			UpdateFogEnable()						{ if(gFogEnabled) mTnL.Flags.Fog ? glEnable(GL_FOG) : glDisable(GL_FOG); }
 	inline void			UpdateShadeModel() {}
 #else
-	inline void			UpdateFogEnable()						{ if(gFogEnabled) mTnL.Flags.Fog ? glEnable(GL_FOG) : glDisable(GL_FOG); }
+	inline void			UpdateFogEnable()						{ mTnL.Flags.Fog ? glEnable(GL_FOG) : glDisable(GL_FOG); }
 	inline void			UpdateShadeModel()						{ glShadeModel( mTnL.Flags.Shade ? GL_SMOOTH : GL_FLAT ); }
 #endif
 	void				UpdateTileSnapshots( u32 tile_idx );
