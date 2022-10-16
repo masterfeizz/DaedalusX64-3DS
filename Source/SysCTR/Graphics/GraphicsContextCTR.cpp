@@ -23,9 +23,11 @@ extern void HandleEndOfFrame();
 #define SCR_HEIGHT 240
 
 uint32_t  gVertexCount = 0;
+
 float    *gVertexBuffer;
 uint32_t *gColorBuffer;
 float    *gTexCoordBuffer;
+
 float    *gVertexBufferPtr;
 uint32_t *gColorBufferPtr;
 float    *gTexCoordBufferPtr;
@@ -49,6 +51,8 @@ public:
 	void				ClearZBuffer();
 	void				ClearColBuffer(const c32 &colour);
 	void				ClearColBufferAndDepth(const c32 &colour);
+
+	void				ResetVertexBuffer();
 
 	void				BeginFrame();
 	void				EndFrame();
@@ -86,14 +90,16 @@ template<> bool CSingleton< CGraphicsContext >::Create()
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+uint32_t gMaxVertices = 20000;
+
 IGraphicsContext::IGraphicsContext() : mInitialised(false), mDumpNextScreen(false)
 {	
-	gVertexBufferPtr   =    (float*)linearAlloc(0x800000);
-	gTexCoordBufferPtr =    (float*)linearAlloc(0x600000);
-	gColorBufferPtr    = (uint32_t*)linearAlloc(0x400000);
+	gVertexBufferPtr   =    (float*)linearAlloc(gMaxVertices * sizeof(float) * 3);
+	gTexCoordBufferPtr =    (float*)linearAlloc(gMaxVertices * sizeof(float) * 2);
+	gColorBufferPtr    = (uint32_t*)linearAlloc(gMaxVertices * sizeof(uint32_t) );
 	
-	gVertexBuffer = gVertexBufferPtr;
-	gColorBuffer = gColorBufferPtr;
+	gVertexBuffer   = gVertexBufferPtr;
+	gColorBuffer    = gColorBufferPtr;
 	gTexCoordBuffer = gTexCoordBufferPtr;
 }
 
@@ -154,6 +160,15 @@ void IGraphicsContext::ClearColBufferAndDepth(const c32 & colour)
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 }
 
+void IGraphicsContext::ResetVertexBuffer()
+{
+	gVertexBuffer   = gVertexBufferPtr;
+	gColorBuffer    = gColorBufferPtr;
+	gTexCoordBuffer = gTexCoordBufferPtr;
+
+	gVertexCount      = 0;
+}
+
 void IGraphicsContext::BeginFrame()
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -172,27 +187,11 @@ void IGraphicsContext::EndFrame()
 
 void IGraphicsContext::UpdateFrame(bool wait_for_vbl)
 {
-	static unsigned resetVertexBuffer = 0;
-
 	pglSwapBuffers();
 
-	if( (++resetVertexBuffer % 5) == 0 )
-	{
-		gVertexBuffer = gVertexBufferPtr;
-		gColorBuffer = gColorBufferPtr;
-		gTexCoordBuffer = gTexCoordBufferPtr;
-		gVertexCount = 0;
-
-		resetVertexBuffer = 0;
-	}
-
 	UI::DrawInGameMenu();
+
 	ClearToBlack();
-}
-
-void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer)
-{
-
 }
 
 void IGraphicsContext::ViewportType(u32 *d_width, u32 *d_height) const
@@ -210,20 +209,16 @@ void IGraphicsContext::ViewportType(u32 *d_width, u32 *d_height) const
 	}
 }
 
-void IGraphicsContext::SaveScreenshot(const char* filename, s32 x, s32 y, u32 width, u32 height)
-{
-}
-
-void IGraphicsContext::DumpScreenShot()
-{
-}
-
-void IGraphicsContext::StoreSaveScreenData()
-{
-}
-
 void IGraphicsContext::GetScreenSize(u32 * p_width, u32 * p_height) const
 {
 	*p_width = SCR_WIDTH;
 	*p_height = SCR_HEIGHT;
 }
+
+void IGraphicsContext::SetDebugScreenTarget(ETargetSurface buffer){}
+
+void IGraphicsContext::SaveScreenshot(const char* filename, s32 x, s32 y, u32 width, u32 height){}
+
+void IGraphicsContext::DumpScreenShot(){}
+
+void IGraphicsContext::StoreSaveScreenData(){}
