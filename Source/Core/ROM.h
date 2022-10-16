@@ -137,7 +137,7 @@ struct RomInfo
 		u32 HACKS_u32;
 		struct
 		{
-			u16			GameHacks:16;			// Hacks for specific games
+			u16			GameHacks:16;			//Hacks for specific games
 			u32			LOAD_T1_HACK:1;			//LOAD T1 texture hack
 			u32			T1_HACK:1;				//T1 texture hack
 			u32			ZELDA_HACK:1;			//for both MM and OOT
@@ -146,7 +146,7 @@ struct RomInfo
 			u32			DISABLE_LBU_OPT:1;		//Disable memory optimation for
 			u32			DISABLE_SIM_CVT_D_S:1;	//Hack to disable sim-CVT_D_S
 			u32			SET_ROUND_MODE:1;		//Hack to set rounding mode for the PSP
-			u32			Pad8:1;	//free
+			u32			VIHEIGHT_HACK:1;		//Hack to "fix" viHeight scale
 			u32			Pad9:1;	//free
 			u32			PadA:1;	//free
 			u32			PadB:1;	//free

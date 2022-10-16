@@ -312,11 +312,12 @@ void BaseRenderer::InitViewport()
 	#endif
 
 	if (mScreenWidth != display_width || mScreenHeight != display_height ||
-		oldfViWidth != fViWidth || oldfViHeight != fViHeight ){
+		oldfViWidth != fViWidth || oldfViHeight != fViHeight )
+	{
 		
 		mScreenWidth  = (f32)display_width;
 		mScreenHeight = (f32)display_height;
-		oldfViWidth = fViWidth;
+		oldfViWidth  = fViWidth;
 		oldfViHeight = fViHeight;
 
 #ifdef DAEDALUS_PSP
@@ -324,16 +325,16 @@ void BaseRenderer::InitViewport()
 		u32 frame_width  = (u32)(gGlobalPreferences.TVEnable ? 720 : 480);
 		u32 frame_height = (u32)(gGlobalPreferences.TVEnable ? 480 : 272);
 
-		s32 display_x {(s32)(frame_width  - display_width)  / 2};
-		s32 display_y {(s32)(frame_height - display_height) / 2};
+		s32 display_x = (s32)(frame_width  - display_width)  / 2;
+		s32 display_y = (s32)(frame_height - display_height) / 2;
 #else
 
 		u32 frame_width, frame_height;
 
 		CGraphicsContext::Get()->GetScreenSize(&frame_width, &frame_height);
 
-		s32 display_x {(s32)(frame_width  - display_width)  / 2};
-		s32 display_y {(s32)(frame_height - display_height) / 2};
+		s32 display_x = (s32)(frame_width  - display_width)  / 2;
+		s32 display_y = (s32)(frame_height - display_height) / 2;
 #endif
 
 		mN64ToScreenScale.x = gZoomX * mScreenWidth  / fViWidth;
@@ -349,6 +350,11 @@ void BaseRenderer::InitViewport()
 			mN64ToScreenTranslate.y += (FastRand() & 3);
 		}
 #endif
+
+		if(g_ROM.VIHEIGHT_HACK)
+		{
+			mN64ToScreenScale.y = 1.0f;
+		}
 
 #if defined(DAEDALUS_GL) || defined(DAEDALUS_CTR)
 		f32 w = mScreenWidth;

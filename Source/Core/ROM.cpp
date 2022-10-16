@@ -426,6 +426,10 @@ void SpecificGameHacks( const ROMHeader & id )
 	case 0x5543:	//Cruisn' USA
 		g_ROM.GameHacks = BODY_HARVEST;
 		break;
+	case 0x4254:	//Mischief Makers
+	case 0x5257:    //Wave race
+		g_ROM.VIHEIGHT_HACK = true;
+		break;
 	default:
 		break;
 	}
