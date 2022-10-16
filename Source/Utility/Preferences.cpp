@@ -47,7 +47,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static const EAudioPluginMode      kDefaultAudioPluginMode      = APM_DISABLED;
 static const ETextureHashFrequency kDefaultTextureHashFrequency = THF_DISABLED;
 #else
-static const EAudioPluginMode      kDefaultAudioPluginMode      = APM_ENABLED_ASYNC;
+static const EAudioPluginMode      kDefaultAudioPluginMode      = APM_ENABLED_SYNC;
 static const ETextureHashFrequency kDefaultTextureHashFrequency = THF_EVERY_FRAME;
 #endif
 
@@ -429,7 +429,7 @@ void SGlobalPreferences::Apply() const
 SRomPreferences::SRomPreferences()
 	:	PatchesEnabled( true )
 	,	DynarecEnabled( true )
-	,	DynarecLoopOptimisation( true )
+	,	DynarecLoopOptimisation( false )
 	,	DynarecDoublesOptimisation( true )
 	,	DoubleDisplayEnabled( true )
 	,	CleanSceneEnabled( false )
@@ -437,7 +437,7 @@ SRomPreferences::SRomPreferences()
 	,	AudioRateMatch( false )
 	,	VideoRateMatch( false )
 	,	FogEnabled( false )
-	,   MemoryAccessOptimisation( true )
+	,   MemoryAccessOptimisation( false )
 	,	CheatsEnabled( false )
 //	,	AudioAdaptFrequency( false )
 	,	CheckTextureHashFrequency( kDefaultTextureHashFrequency )
@@ -454,7 +454,7 @@ void SRomPreferences::Reset()
 	PatchesEnabled             = true;
 	SpeedSyncEnabled           = 1;
 	DynarecEnabled             = true;
-	DynarecLoopOptimisation    = true;
+	DynarecLoopOptimisation    = false;
 	DynarecDoublesOptimisation = true;
 	DoubleDisplayEnabled       = true;
 	CleanSceneEnabled          = false;
@@ -462,7 +462,7 @@ void SRomPreferences::Reset()
 	AudioRateMatch             = false;
 	VideoRateMatch             = false;
 	FogEnabled                 = false;
-	MemoryAccessOptimisation   = true;
+	MemoryAccessOptimisation   = false;
 	CheckTextureHashFrequency  = kDefaultTextureHashFrequency;
 	Frameskip                  = FV_DISABLED;
 	AudioEnabled               = kDefaultAudioPluginMode;
