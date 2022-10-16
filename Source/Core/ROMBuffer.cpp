@@ -62,9 +62,9 @@ namespace
 	{
 #ifdef DAEDALUS_CTR
 		if(isN3DS)
-			return rom_size <= 32 * 1024 * 1024;
+			return rom_size < 32 * 1024 * 1024;
 		else
-			return false;
+			return rom_size <  8 * 1024 * 1024;
 #else
 		return true;
 #endif
