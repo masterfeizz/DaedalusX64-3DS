@@ -815,7 +815,7 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 	float sx1 = N64ToScreenX(x1);
 	float sy1 = N64ToScreenY(y1);
 
-	DaedalusVtx * p_vertices = static_cast<DaedalusVtx *>(malloc(4 * sizeof(DaedalusVtx)));
+	DaedalusVtx p_vertices[4];
 
 	p_vertices[0].Position.x = sx0;
 	p_vertices[0].Position.y = sy0;
@@ -847,8 +847,6 @@ void RendererCTR::Draw2DTexture(f32 x0, f32 y0, f32 x1, f32 y1,
 
 	glEnable(GL_TEXTURE_2D);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_STRIP, true);
-
-	free(p_vertices);
 }
 
 void RendererCTR::Draw2DTextureR(f32 x0, f32 y0, f32 x1, f32 y1, f32 x2,
@@ -860,7 +858,7 @@ void RendererCTR::Draw2DTextureR(f32 x0, f32 y0, f32 x1, f32 y1, f32 x2,
 	float scale_x = texture->GetScaleX();
 	float scale_y = texture->GetScaleY();
 
-	DaedalusVtx * p_vertices = static_cast<DaedalusVtx *>(malloc(4 * sizeof(DaedalusVtx)));
+	DaedalusVtx p_vertices[4];
 	
 	p_vertices[0].Position.x = N64ToScreenX(x0);
 	p_vertices[0].Position.y = N64ToScreenY(y0);
@@ -892,8 +890,6 @@ void RendererCTR::Draw2DTextureR(f32 x0, f32 y0, f32 x1, f32 y1, f32 x2,
 	
 	glEnable(GL_TEXTURE_2D);
 	RenderUsingCurrentBlendMode(mScreenToDevice.mRaw, p_vertices, 4, GL_TRIANGLE_FAN, true);
-
-	free(p_vertices);
 }
 
 bool CreateRenderer()
