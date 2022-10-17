@@ -25,10 +25,10 @@ void UI::RestoreRenderState()
 {
 	pglSelectScreen(GFX_BOTTOM, GFX_LEFT);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	glViewport(0,0,320,240);
-
+	
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glEnable(GL_BLEND);

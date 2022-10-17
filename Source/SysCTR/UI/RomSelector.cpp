@@ -124,7 +124,15 @@ std::string UI::DrawRomSelector()
 	
 	if(roms.empty())
 	{
-		glClear(GL_COLOR_BUFFER_BIT);
+		pglExit();
+		gfxExit();
+
+		gfxInitDefault();
+		consoleInit(GFX_BOTTOM, NULL);
+
+		printf("No ROMs found!\n\n");
+		printf("Add ROMs to sdmc:/3ds/DaedalusX64/Roms\n\n\n");
+		printf("Press START to exit\n");
 
 		while(aptMainLoop())
 		{

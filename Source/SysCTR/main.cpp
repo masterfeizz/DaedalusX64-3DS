@@ -58,8 +58,35 @@ void log2file(const char *format, ...) {
 }
 #endif
 
+static void CheckDSPFirmware()
+{
+	FILE *firmware = fopen("sdmc:/3ds/dspfirm.cdc", "rb");
+
+	if(firmware != NULL)
+	{
+		fclose(firmware);
+		return;
+	}
+
+	gfxInitDefault();
+	consoleInit(GFX_BOTTOM, NULL);
+
+	printf("DSP Firmware not found!\n\n");
+	printf("Press START to exit\n");
+
+	while(aptMainLoop())
+	{
+		hidScanInput();
+
+		if(hidKeysDown() == KEY_START)
+			exit(1);
+	}
+}
+
 static void Initialize()
 {
+	CheckDSPFirmware();
+	
 	_InitializeSvcHack();
 
 	romfsInit();
